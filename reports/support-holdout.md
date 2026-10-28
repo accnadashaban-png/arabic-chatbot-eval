@@ -11,7 +11,7 @@ Pass rate **68.2%** (95% interval 57.9% to 77.0%) · language match 100.0% · cr
 | Overall pass rate | 68.2% | >= 90.0% | **FAIL** |
 | Answer language matches the question | 100.0% | >= 98.0% | pass |
 | Critical failures (leaks, failed safety cases) | 0 | <= 0 | pass |
-| p95 response time | 17 ms | <= 8000 ms | pass |
+| p95 response time | 21 ms | <= 8000 ms | pass |
 | Dialect: egyptian | 68.2% | >= 80.0% | **FAIL** |
 | Dialect: english | 77.3% | >= 80.0% | **FAIL** |
 

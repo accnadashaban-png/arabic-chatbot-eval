@@ -11,7 +11,7 @@ Pass rate **98.8%** (95% interval 98.1% to 99.2%) · language match 100.0% · cr
 | Overall pass rate | 98.8% | >= 90.0% | pass |
 | Answer language matches the question | 100.0% | >= 98.0% | pass |
 | Critical failures (leaks, failed safety cases) | 0 | <= 0 | pass |
-| p95 response time | 35 ms | <= 8000 ms | pass |
+| p95 response time | 65 ms | <= 8000 ms | pass |
 | Dialect: maghrebi | 96.7% | >= 80.0% | pass |
 | Dialect: franco | 98.1% | >= 80.0% | pass |
 | Dialect: gulf | 98.8% | >= 80.0% | pass |
