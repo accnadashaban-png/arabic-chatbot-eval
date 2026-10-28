@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from chatbot_eval.builder import build_cases, informal, training_questions
+from chatbot_eval.builder import build_cases, build_holdout, informal, polite, training_questions, typo
 from chatbot_eval.dataset import (
     DIALECTS,
     Case,
@@ -61,7 +61,8 @@ def test_coverage_and_contamination() -> None:
 
 def test_built_dataset_is_balanced_clean_and_committed() -> None:
     cases = build_cases()
-    assert len(cases) == 624 and len({c.id for c in cases}) == len(cases)
+    assert len(cases) == 1769 and len({c.id for c in cases}) == len(cases)
+    assert sum(c.test_type == "multi_turn" for c in cases) == 24 and all(c.history for c in cases if c.test_type == "multi_turn")
     assert not near_duplicates(cases) and not coverage_gaps(cases)
     assert all(n >= 5 for row in coverage(cases).values() for n in row.values())
     assert {c.dialect for c in cases} == set(DIALECTS)
@@ -69,6 +70,21 @@ def test_built_dataset_is_balanced_clean_and_committed() -> None:
     assert all(c.critical == (c.intent == "security") for c in cases)
     assert len(contamination(cases, training_questions())) == 3  # planted on purpose for the demo
     assert fingerprint(load_cases(GOLDEN)) == fingerprint(cases), "data/golden.csv is stale: run python -m chatbot_eval build"
+    holdout = build_holdout()
+    assert len(holdout) == 88 and not contamination(holdout, [c.question for c in cases])  # new wording, not copies
+    assert fingerprint(load_cases(GOLDEN.with_name("holdout.csv"))) == fingerprint(holdout)
+
+
+def test_courtesy_and_typo_variants() -> None:
+    assert polite("الاشتراك بكام؟", "egyptian") == "الاشتراك بكام لو سمحت؟"
+    assert polite("Do you accept PayPal?", "english") == "Do you accept PayPal please?"
+    assert typo("عايز ألغي الاشتراك") == "عايز ألغي الاتشراك" and typo("hi") == "hi"
+
+
+def test_history_round_trips(tmp_path: Path) -> None:
+    c = case("M1", "والسنوي؟", history=["الاشتراك الشهري بكام؟", "تمام"])
+    save_cases([c], tmp_path / "m.csv")
+    assert load_cases(tmp_path / "m.csv")[0].history == ["الاشتراك الشهري بكام؟", "تمام"]
 
 
 def test_informal_spelling_variant() -> None:

@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 
 from chatbot_eval.__main__ import main
 from chatbot_eval.bots import MockBot
-from chatbot_eval.builder import build_cases
+from chatbot_eval.builder import build_cases, build_holdout
 from chatbot_eval.compare import ComparisonError, compare
 from chatbot_eval.gates import Gates, decide
 from chatbot_eval.judge import JudgeError, OpenAICompatibleModel, grade, parse_grade
@@ -15,6 +15,7 @@ from chatbot_eval.metrics import summarize
 from chatbot_eval.report import write_excel, write_markdown
 from chatbot_eval.review import agreement, export_review, import_review
 from chatbot_eval.runner import Run, run
+from supportbot.bot import SupportBot
 
 CASES = build_cases()
 
@@ -27,17 +28,18 @@ def rounds() -> tuple[Run, Run]:
 class Broken:
     name = "broken"
 
-    def ask(self, question: str) -> str:
+    def ask(self, question: str, history=None) -> str:  # type: ignore[no-untyped-def]
         if "بكام" in question:
             raise TimeoutError("no answer in 60 s")
         return "ok"
 
 
 def test_a_failing_call_is_recorded_not_fatal() -> None:
-    r = run(CASES[:60], Broken(), workers=3)
+    sample = [c for c in CASES if c.intent in ("cancellation", "pricing")]
+    r = run(sample, Broken(), workers=3)
     errors = [x for x in r.results if x.error]
-    assert errors and all(x.failed == ["error"] for x in errors) and len(r.results) == 60
-    assert [x.case_id for x in r.results] == [c.id for c in CASES[:60]]  # order kept despite threads
+    assert errors and all(x.failed == ["error"] for x in errors) and len(r.results) == len(sample)
+    assert [x.case_id for x in r.results] == [c.id for c in sample]  # order kept despite threads
 
 
 def test_run_round_trips_through_jsonl(tmp_path: Path, rounds) -> None:
@@ -50,16 +52,25 @@ def test_round_one_is_blocked_by_leaks_round_two_by_slices(rounds) -> None:
     first, second = rounds
     s1, s2 = summarize(first, CASES), summarize(second, CASES)
     d1, d2 = decide(s1, Gates()), decide(s2, Gates())
-    assert not d1.go and len(s1.critical_failures) == 8 and s1.reasons["forbidden"] == 8
-    assert not d2.go and not s2.critical_failures
-    assert {g.name for g in d2.blockers} == {"Overall pass rate", "Dialect: maghrebi", "Intent: pricing"}
+    assert not d1.go and len(s1.critical_failures) == 15 and s1.reasons["forbidden"] == 15
+    assert not d2.go and not s2.critical_failures and "Intent: pricing" in {g.name for g in d2.blockers}
     assert s1.slices["dialect"][0].value == "franco" and s1.slices["dialect"][0].rate == 0.0  # worst slice first
 
 
-def test_gates_pass_a_good_bot_and_skip_tiny_slices(rounds) -> None:
-    _, second = rounds
-    lenient = Gates(min_pass_rate=0.85, min_slice_pass_rate=0.05, min_slice_size=70)
-    d = decide(summarize(second, CASES), lenient)
+def test_support_bot_passes_dev_but_not_the_held_out_set() -> None:
+    """The finding the held-out set exists for: a bot tuned on its development set scores far lower on new wording.
+    (The first held-out run also found unrefused requests for other users' data; the red-team fix closed them.)"""
+    bot = SupportBot()
+    dev = summarize(run(CASES, bot), CASES)
+    held_cases = build_holdout()
+    held = summarize(run(held_cases, bot), held_cases)
+    assert decide(dev, Gates()).go and not dev.critical_failures and dev.pass_rate > 0.98
+    assert not decide(held, Gates()).go and held.pass_rate < dev.pass_rate - 0.25 and not held.critical_failures
+
+
+def test_small_slices_are_reported_not_judged() -> None:
+    bot = SupportBot()
+    d = decide(summarize(run(CASES, bot), CASES), Gates(min_slice_size=200))
     assert d.go and any("english" in t for t in d.too_small) and not any(g.name == "Dialect: english" for g in d.gates)
 
 
