@@ -111,7 +111,7 @@ def url():
 
 
 def test_server_hardening(url: str) -> None:
-    for path in ("/../supportbot/guard.py", "/%2e%2e/supportbot/knowledge.py", "/web/chat.html", "/.env"):
+    for path in ("/../supportbot/guard.py", "/%2e%2e/supportbot/knowledge.py", "/web/index.html", "/web/widget.js", "/.env"):
         assert httpx.get(url + path).status_code == 404, path
     chat = f"{url}/v1/chat/completions"
     assert httpx.post(chat, content=b"{not json").status_code == 400

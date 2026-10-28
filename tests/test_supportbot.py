@@ -116,7 +116,27 @@ def test_server_speaks_openai_and_the_evaluator_can_test_it(server: str) -> None
                    json={"messages": [{"role": "user", "content": "عايز فلوسي ترجع"}]}).json()
     assert r["supportbot"]["behavior"] == "handoff" and r["supportbot"]["sources"] == ["KB-03"]
     assert httpx.get(f"{server}/health").json()["entries"] == len(BOT.entries)
-    assert "Support assistant" in httpx.get(f"{server}/").text
+    assert 'src="/widget.js"' in httpx.get(f"{server}/").text
+    widget = httpx.get(f"{server}/widget.js")
+    assert widget.headers["content-type"].startswith("text/javascript") and "attachShadow" in widget.text
+    assert ".innerHTML = text" not in widget.text and "textContent = text" in widget.text  # messages are text, never HTML
+
+
+def test_public_widget_protections() -> None:
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(BOT, allowed_origins=("https://shop.example",), per_minute=3))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{httpd.server_address[1]}/v1/chat/completions"
+    try:
+        ok = httpx.options(url, headers={"Origin": "https://shop.example", "Access-Control-Request-Method": "POST"})
+        assert ok.status_code == 204 and ok.headers["access-control-allow-origin"] == "https://shop.example"
+        assert httpx.options(url, headers={"Origin": "https://evil.example"}).status_code == 403
+        body = {"messages": [{"role": "user", "content": "hi"}]}
+        r = httpx.post(url, json=body, headers={"Origin": "https://evil.example"})
+        assert "access-control-allow-origin" not in r.headers  # the browser will not hand the answer to other sites
+        codes = [httpx.post(url, json=body).status_code for _ in range(3)]
+        assert codes[:2] == [200, 200] and codes[2] == 429  # 3 per minute, one already used above
+    finally:
+        httpd.shutdown()
 
 
 def test_server_rejects_bad_requests(server: str) -> None:
