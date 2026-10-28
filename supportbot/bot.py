@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from supportbot.arabic import reply_language, stems
+from supportbot.arabic import fold, reply_language, stems, tokens
 from supportbot.guard import is_attack, redact
 from supportbot.knowledge import DEMO_KB, LEXICON, SECONDARY, STOPWORDS, Hit, Index, Lexicon, load_entries, load_policies
 from supportbot.llm import ProviderError, Router, build_messages, grounded
@@ -25,6 +25,19 @@ from supportbot.store import Store
 
 log = logging.getLogger("supportbot")
 FOLLOW_UP_MAX_WORDS = 4
+GREETING = {"ar": "أهلًا بك! كيف أقدر أساعدك؟ أستطيع المساعدة في الاشتراك والدفع والدورات وحسابك.",
+            "en": "Hi! How can I help? I can help with your subscription, payments, courses and account."}
+GREETING_WORDS = frozenset(fold(w) for w in [
+    "hi", "hello", "hey", "hiya", "hola", "salam", "ahlan", "marhaba", "good", "morning", "evening", "afternoon", "there",
+    "السلام", "عليكم", "سلام", "اهلا", "اهلين", "مرحبا", "مرحبتين", "هاي", "هلا", "يا", "صباح", "مساء", "الخير", "النور",
+    "الفل", "كيفك", "ازيك", "عامل", "ايه", "شلونك",
+])
+
+
+def is_greeting(message: str) -> bool:
+    """A message made only of greeting words (and punctuation)."""
+    words = tokens(message)
+    return bool(words) and len(words) <= 6 and all(w in GREETING_WORDS for w in words)
 
 
 @dataclass
@@ -106,6 +119,8 @@ class SupportBot:
         if is_attack(message):
             log.info("refused an attack: %s", redact(message)[:200])
             return Reply(msgs["refuse_attack"][lang], "refuse", lang, "security", mode="guard")
+        if is_greeting(message):  # "hi", "السلام عليكم": greet back instead of asking what they mean
+            return Reply(msgs.get("greeting", GREETING)[lang], "answer", lang, "greeting", mode="kb")
         hit, follow_up = self._retrieve(message, history)
         if not self._confident(hit) or hit is None:
             if self.llm and hit is not None and hit.alternatives:  # unsure: let the model pick among the closest entries
