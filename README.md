@@ -78,7 +78,7 @@ SB_DATABASE_URL=postgresql://user:pass@host/db python -m supportbot serve
 ```bash
 pip install -e ".[dev]"
 python -m chatbot_eval demo        # UAT demo rounds + the support bot on both sets; reports in reports/
-pytest                             # 133 tests
+pytest                             # 140 tests
 ```
 
 **Test your own bot** (any OpenAI-compatible endpoint):
@@ -98,7 +98,7 @@ supportbot/     the bot: arabic, lexicon, knowledge (BM25), guard, llm (provider
 data/           golden set, held-out set, training FAQ, gates
 docs/           method, dataset format, support bot guide
 reports/        demo and support-bot reports
-tests/          133 tests: statistics by hand, every check, the bot, red team, live database, server, end to end
+tests/          140 tests: statistics by hand, every check, the bot, red team, live database, server, end to end
 ```
 
 The bot and the evaluator share no code on purpose: a text-handling bug in both would hide itself.

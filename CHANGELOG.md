@@ -12,7 +12,8 @@
 - **Embeddable widget** (`/widget.js`): launcher in the corner, dark theme, right-to-left aware, Shadow DOM, full screen
   on phones; demo product page. CORS allow-list (`SB_ALLOWED_ORIGINS`) and per-visitor rate limit for public use.
 - Fixed: card numbers followed by text were masked together with the following space.
-- 133 tests; CI runs the PostgreSQL tests against a PostgreSQL 16 service.
+- Greetings ("hi", "السلام عليكم") get a greeting back instead of a clarifying question.
+- 140 tests; CI runs the PostgreSQL tests against a PostgreSQL 16 service.
 
 ## 2.0.0
 
