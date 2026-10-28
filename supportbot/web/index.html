@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lernova · support assistant demo</title>
+<style>
+  :root { --bg:#0A0D14; --panel:#111622; --line:#1F2636; --fg:#E8EBF2; --muted:#8C94A8; --accent:#7C6CFF; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:radial-gradient(1200px 600px at 80% -10%, rgba(124,108,255,.16), transparent 60%), var(--bg);
+         color:var(--fg); font:15px/1.6 "Inter","IBM Plex Sans Arabic",system-ui,"Segoe UI",Tahoma,sans-serif; min-height:100vh; }
+  nav { display:flex; align-items:center; gap:28px; max-width:1100px; margin:0 auto; padding:22px 24px; }
+  .logo { font-weight:700; letter-spacing:-.02em; font-size:18px; } .logo b { color:var(--accent); }
+  nav a { color:var(--muted); text-decoration:none; font-size:14px; } nav a:hover { color:var(--fg); }
+  .lang { margin-inline-start:auto; border:1px solid var(--line); background:var(--panel); color:var(--fg); border-radius:10px; padding:7px 12px; cursor:pointer; font:inherit; font-size:13px; }
+  main { max-width:1100px; margin:0 auto; padding:70px 24px; }
+  .eyebrow { color:var(--accent); font-weight:600; font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
+  h1 { font-size:clamp(34px,5vw,54px); line-height:1.08; letter-spacing:-.03em; margin:14px 0 16px; max-width:720px; }
+  p.lead { color:var(--muted); font-size:18px; max-width:560px; margin:0 0 30px; }
+  .cta { display:inline-block; background:var(--fg); color:var(--bg); border-radius:12px; padding:12px 20px; font-weight:600; text-decoration:none; }
+  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:70px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px; }
+  .card h3 { margin:0 0 6px; font-size:16px; } .card p { margin:0; color:var(--muted); font-size:14px; }
+  footer { max-width:1100px; margin:0 auto; padding:30px 24px 60px; color:#5F677C; font-size:13px; }
+  @media (max-width:760px) { .grid { grid-template-columns:1fr; } nav a { display:none; } }
+  html[lang="ar"] [data-en], html[lang="en"] [data-ar] { display:none; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">lernova<b>.</b></div>
+  <a href="#" data-en>Courses</a><a href="#" data-en>Pricing</a><a href="#" data-en>Community</a>
+  <a href="#" data-ar>الدورات</a><a href="#" data-ar>الأسعار</a><a href="#" data-ar>المجتمع</a>
+  <button class="lang" id="lang" type="button">العربية</button>
+</nav>
+<main>
+  <div class="eyebrow"><span data-en>Demo product page</span><span data-ar>صفحة منتج تجريبية</span></div>
+  <h1><span data-en>Learn new skills with live classes and a community that helps.</span><span data-ar>اتعلم مهارات جديدة مع جلسات مباشرة ومجتمع بيساعدك.</span></h1>
+  <p class="lead"><span data-en>A fictional platform used to show the support assistant. Open the chat button in the corner.</span><span data-ar>منصة وهمية لعرض مساعد الدعم. افتح زر المحادثة في الركن.</span></p>
+  <a class="cta" href="#"><span data-en>Start free trial</span><span data-ar>ابدأ التجربة المجانية</span></a>
+  <div class="grid">
+    <div class="card"><h3><span data-en>Live sessions</span><span data-ar>جلسات مباشرة</span></h3><p><span data-en>Every session is recorded.</span><span data-ar>كل جلسة بتتسجل.</span></p></div>
+    <div class="card"><h3><span data-en>Certificates</span><span data-ar>شهادات</span></h3><p><span data-en>Earn one for every course you finish.</span><span data-ar>شهادة مع كل دورة بتخلصها.</span></p></div>
+    <div class="card"><h3><span data-en>Mobile app</span><span data-ar>تطبيق الموبايل</span></h3><p><span data-en>iOS and Android, offline lessons.</span><span data-ar>iOS وأندرويد، ودروس من غير إنترنت.</span></p></div>
+  </div>
+</main>
+<footer>Fictional company and content, for demonstration only.</footer>
+<script>
+  document.getElementById("lang").onclick = () => {
+    const ar = document.documentElement.lang !== "ar";
+    document.documentElement.lang = ar ? "ar" : "en";
+    document.documentElement.dir = ar ? "rtl" : "ltr";
+    document.getElementById("lang").textContent = ar ? "English" : "العربية";
+  };
+</script>
+<script src="/widget.js" data-name="Lernova Assistant" defer></script>
+</body>
+</html>
