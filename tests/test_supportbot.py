@@ -164,3 +164,14 @@ def test_bring_your_own_knowledge_base(tmp_path: Path) -> None:
     shop = SupportBot(tmp_path)
     assert shop.respond("الطلب هيوصل إمتى؟").text == "يصل الطلب خلال 3 أيام عمل."
     assert shop.respond("I want my money back").behavior == "handoff"
+
+
+@pytest.mark.parametrize("message", ["hi", "Hello!", "السلام عليكم", "اهلا", "صباح الخير", "salam"])
+def test_a_greeting_gets_a_greeting(message: str) -> None:
+    r = BOT.respond(message)
+    assert (r.behavior, r.topic) == ("answer", "greeting")
+
+
+def test_a_greeting_before_a_question_still_answers_it() -> None:
+    assert BOT.respond("hi, how much is it?").topic == "pricing"
+    assert BOT.respond("Hi there, I have a problem").behavior == "clarify"
