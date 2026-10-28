@@ -127,6 +127,7 @@ class Hit:
     margin: float  # how far ahead of the best entry from another topic (0..1)
     concepts: set[str]
     anchored: bool = True  # False when no concept matched and words alone decided
+    alternatives: tuple[Entry, ...] = ()  # the best entries of different topics, for an LLM to choose from
 
 
 class Index:
@@ -168,4 +169,9 @@ class Index:
         if top_score <= 0:
             return None
         rival = next((s for s, e in pool[1:] if e.topic != top.topic and rank(e) == rank(top)), 0.0)
-        return Hit(top, top_score, (top_score - rival) / top_score, concepts, anchored=bool(anchored))
+        alternatives: list[Entry] = []
+        for s, e in sorted(scores, key=lambda x: (rank(x[1]), x[0]), reverse=True):
+            if s > 0 and e.topic not in {a.topic for a in alternatives} and len(alternatives) < 3:
+                alternatives.append(e)
+        return Hit(top, top_score, (top_score - rival) / top_score, concepts, anchored=bool(anchored),
+                   alternatives=tuple(alternatives))

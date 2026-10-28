@@ -7,6 +7,9 @@ from __future__ import annotations
 
 import os
 import re
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import httpx
@@ -29,7 +32,27 @@ Knowledge base:
 
 
 class ProviderError(RuntimeError):
-    pass
+    def __init__(self, message: str, kind: str = "server", retry_after: float | None = None):
+        super().__init__(message)
+        self.kind, self.retry_after = kind, retry_after
+
+
+# How long a provider rests after each kind of failure. Free tiers run out (quota) for hours, rate limits clear in a
+# minute, an invalid key will not fix itself today, and outages are retried soon with growing pauses.
+COOLDOWN_S = {"quota": 6 * 3600, "rate_limit": 60, "auth": 24 * 3600, "server": 30, "network": 20, "bad_response": 30}
+QUOTA_WORDS = ("quota", "credit", "billing", "insufficient", "exceeded your", "limit reached", "resource_exhausted")
+
+
+def classify(status: int, body: str) -> str:
+    if status in (401, 403):
+        return "auth"
+    if status == 402 or (status == 429 and any(w in body.lower() for w in QUOTA_WORDS)):
+        return "quota"
+    if status == 429:
+        return "rate_limit"
+    if status >= 500 or status == 408:
+        return "server"
+    return "bad_request"  # our request was rejected: try the next provider, but do not bench this one
 
 
 @dataclass
@@ -46,20 +69,34 @@ class Provider:
             with httpx.Client(timeout=30, headers=headers, transport=self.transport) as client:
                 r = client.post(self.url, json={"model": self.model, "messages": messages, "temperature": 0})
         except httpx.HTTPError as exc:
-            raise ProviderError(f"{self.name}: {type(exc).__name__}") from exc
+            raise ProviderError(f"{self.name}: {type(exc).__name__}", "network") from exc
         if r.status_code != 200:
-            raise ProviderError(f"{self.name}: HTTP {r.status_code}")
+            retry = r.headers.get("Retry-After", "")
+            raise ProviderError(f"{self.name}: HTTP {r.status_code}", classify(r.status_code, r.text[:500]),
+                                float(retry) if retry.replace(".", "", 1).isdigit() else None)
         try:
             return str(r.json()["choices"][0]["message"]["content"])
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise ProviderError(f"{self.name}: unexpected response") from exc
+            raise ProviderError(f"{self.name}: unexpected response", "bad_response") from exc
+
+
+@dataclass
+class ProviderState:
+    available_at: float = 0.0
+    failures: int = 0
+    last_error: str = ""
+    served: int = 0
 
 
 class Router:
-    """Try providers in order; the first that answers wins."""
+    """A group of providers used in order. When one fails it rests for a time that fits the failure and the next one
+    answers at once; when it recovers it is used again. If every provider is resting, the one that recovers first
+    is tried, and the bot falls back to its knowledge base if that fails too."""
 
-    def __init__(self, providers: list[Provider]):
-        self.providers = providers
+    def __init__(self, providers: list[Provider], clock: Callable[[], float] = time.monotonic):
+        self.providers, self.clock = providers, clock
+        self.state = {p.name: ProviderState() for p in providers}
+        self.lock = threading.Lock()
 
     @classmethod
     def from_env(cls) -> Router | None:
@@ -71,22 +108,54 @@ class Router:
             providers.append(Provider(name, url, os.environ.get(f"SB_LLM_KEY_{name.upper()}", ""), model))
         return cls(providers) if providers else None
 
+    def _order(self) -> list[Provider]:
+        now = self.clock()
+        with self.lock:
+            ready = [p for p in self.providers if self.state[p.name].available_at <= now]
+            if ready:
+                return ready
+            return [min(self.providers, key=lambda p: self.state[p.name].available_at)] if self.providers else []
+
     def complete(self, messages: list[dict[str, str]]) -> tuple[str, str]:
         errors = []
-        for p in self.providers:
+        for p in self._order():
             try:
-                return p.complete(messages), p.name
+                text = p.complete(messages)
             except ProviderError as exc:
-                errors.append(str(exc))
-        raise ProviderError("; ".join(errors) or "no providers")
+                errors.append(f"{exc} ({exc.kind})")
+                with self.lock:
+                    s = self.state[p.name]
+                    s.last_error = exc.kind
+                    if exc.kind != "bad_request":
+                        s.failures += 1
+                        growth = min(2 ** (s.failures - 1), 8) if exc.kind in ("server", "network", "bad_response") else 1
+                        s.available_at = self.clock() + (exc.retry_after or COOLDOWN_S[exc.kind] * growth)
+                continue
+            with self.lock:
+                s = self.state[p.name]
+                s.failures, s.served, s.available_at = 0, s.served + 1, 0.0
+            return text, p.name
+        raise ProviderError("; ".join(errors) or "no providers", "unavailable")
+
+    def status(self) -> list[dict[str, object]]:
+        """Each provider's state, without keys."""
+        now = self.clock()
+        with self.lock:
+            return [{"name": p.name, "model": p.model, "available": self.state[p.name].available_at <= now,
+                     "rests_for_s": max(0, round(self.state[p.name].available_at - now)),
+                     "last_error": self.state[p.name].last_error, "served": self.state[p.name].served}
+                    for p in self.providers]
 
 
 def build_messages(question: str, history: list[dict[str, str]], entries: list[Entry], language: str, business: str,
-                   canary: str) -> list[dict[str, str]]:
+                   canary: str, choose: bool = False) -> list[dict[str, str]]:
     passages = "\n".join(f"[{e.id}] ({e.topic}) {e.answer['ar']} / {e.answer['en']}" for e in entries)
     system = SYSTEM.format(business=business, language="Arabic" if language == "ar" else "English",
                            dialect_note=" (simple Modern Standard Arabic the user understands)" if language == "ar" else "",
                            canary=canary, passages=passages)
+    if choose:
+        system += ("\n\nThese entries are only candidates. Use the single entry that answers the question and cite it. "
+                   "If none of them answers it, reply with exactly: CLARIFY")
     return [{"role": "system", "content": system}, *history[-6:], {"role": "user", "content": question}]
 
 

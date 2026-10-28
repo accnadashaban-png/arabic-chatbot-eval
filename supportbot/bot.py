@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -19,6 +21,7 @@ from supportbot.arabic import reply_language, stems
 from supportbot.guard import is_attack, redact
 from supportbot.knowledge import DEMO_KB, LEXICON, SECONDARY, STOPWORDS, Hit, Index, Lexicon, load_entries, load_policies
 from supportbot.llm import ProviderError, Router, build_messages, grounded
+from supportbot.store import Store
 
 log = logging.getLogger("supportbot")
 FOLLOW_UP_MAX_WORDS = 4
@@ -40,14 +43,38 @@ class Reply:
 
 
 class SupportBot:
-    def __init__(self, kb_dir: str | Path | None = None, llm: Router | None = None, canary: str | None = None):
-        folder = Path(kb_dir or os.environ.get("SB_KB_DIR") or DEMO_KB)
-        self.entries = load_entries(folder)
-        self.policies = load_policies(folder)
-        self.index = Index(self.entries, Lexicon.load(LEXICON, folder / "lexicon.csv"))  # shared + the company's own words
+    """Answers from a knowledge-base folder, or from a live database (`store`) that it re-reads when it changes."""
+
+    def __init__(self, kb_dir: str | Path | None = None, llm: Router | None = None, canary: str | None = None,
+                 store: Store | None = None, refresh_s: float = 2.0):
+        self.folder = Path(kb_dir or os.environ.get("SB_KB_DIR") or DEMO_KB)
+        self.store, self.refresh_s = store, refresh_s
+        self.lexicon = Lexicon.load(LEXICON, self.folder / "lexicon.csv")  # shared + the company's own words
+        self._version, self._checked = "", 0.0
+        self._reload_lock = threading.Lock()
+        self._load()
         self.llm = llm
         self.canary = canary or f"SB-{secrets.token_hex(4)}"
         self.name = "support-bot" + ("+llm" if llm else "")
+
+    def _load(self) -> None:
+        if self.store:
+            entries, policies, self._version = self.store.entries(), self.store.policies(), self.store.version()
+        else:
+            entries, policies = load_entries(self.folder), load_policies(self.folder)
+        self.entries, self.policies, self.index = entries, policies, Index(entries, self.lexicon)
+
+    def refresh(self, force: bool = False) -> bool:
+        """Re-read the database if its contents changed (checked at most every `refresh_s` seconds)."""
+        if not self.store or (not force and time.monotonic() - self._checked < self.refresh_s):
+            return False
+        with self._reload_lock:
+            self._checked = time.monotonic()
+            if self.store.version() == self._version:
+                return False
+            self._load()
+            log.info("knowledge base reloaded: %d entries", len(self.entries))
+            return True
 
     # ----- decisions -----
 
@@ -73,6 +100,7 @@ class SupportBot:
 
     def respond(self, message: str, history: list[dict[str, str]] | None = None) -> Reply:
         history = history or []
+        self.refresh()
         lang = reply_language(message)
         msgs = self.policies["messages"]
         if is_attack(message):
@@ -80,14 +108,42 @@ class SupportBot:
             return Reply(msgs["refuse_attack"][lang], "refuse", lang, "security", mode="guard")
         hit, follow_up = self._retrieve(message, history)
         if not self._confident(hit) or hit is None:
+            if self.llm and hit is not None and hit.alternatives:  # unsure: let the model pick among the closest entries
+                chosen = self._llm_choose(message, history, list(hit.alternatives), lang)
+                if chosen:
+                    return chosen
             return Reply(msgs["clarify"][lang], "clarify", lang, mode="clarify", confidence=round(hit.score, 2) if hit else 0.0)
         e = hit.entry
-        behavior = ("handoff" if e.topic in self.policies["handoff_topics"]
-                    else "refuse" if e.topic in self.policies["refuse_topics"] else "answer")
+        behavior = self._behavior(e.topic)
         reply = Reply(e.answer[lang], behavior, lang, e.topic, [e.id], round(hit.score, 2),
                       notes=["read with the previous message"] if follow_up else [])
         if self.llm and behavior == "answer":
             self._llm_answer(reply, message, history, e)
+        return reply
+
+    def _behavior(self, topic: str) -> str:
+        return ("handoff" if topic in self.policies["handoff_topics"]
+                else "refuse" if topic in self.policies["refuse_topics"] else "answer")
+
+    def _llm_choose(self, message: str, history: list[dict[str, str]], candidates: list[Any], lang: str) -> Reply | None:
+        """When retrieval is unsure, the model reads the closest entries and either cites the one that answers the
+        question or says CLARIFY. Its choice is only accepted if it cites exactly one of those entries; hand-offs and
+        refusals then use the fixed knowledge-base text, and an answer must still pass the grounding checks."""
+        try:
+            text, provider = self.llm.complete(build_messages(  # type: ignore[union-attr]
+                message, history, candidates, lang, self.policies.get("business", "the company"), self.canary, choose=True))
+        except ProviderError:
+            return None
+        cited = [e for e in candidates if f"[{e.id}]" in text]
+        if "CLARIFY" in text.upper() or len(cited) != 1:
+            return None
+        e, behavior = cited[0], self._behavior(cited[0].topic)
+        reply = Reply(e.answer[lang], behavior, lang, e.topic, [e.id], notes=[f"{provider} picked {e.id} from {len(candidates)} entries"])
+        ok, why = grounded(text, [e], lang, self.canary)
+        if behavior == "answer" and ok:
+            reply.text, reply.mode = text.strip(), "llm"
+        elif behavior == "answer":
+            reply.notes.append(f"its wording was rejected ({why}), answered with the entry text")
         return reply
 
     def _llm_answer(self, reply: Reply, message: str, history: list[dict[str, str]], entry: Any) -> None:

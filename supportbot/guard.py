@@ -40,7 +40,7 @@ _SQL = re.compile(r"\bselect\b.+\bfrom\b|\bdrop\s+table\b|\bunion\s+select\b|\bi
                   r"|'\s*or\s*'?\d'?\s*=\s*'?\d|;\s*--")
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
-CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+CARD = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")  # 13 to 19 digits, spaces or dashes only between digits
 PHONE = re.compile(r"(?<!\w)\+?\d[\d -]{7,}\d(?!\w)")
 
 
