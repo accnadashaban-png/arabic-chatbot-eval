@@ -14,15 +14,26 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: supportbot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SB_TEST_PG_URL: postgresql://postgres:test@localhost:5432/supportbot
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,postgres]"
       - run: ruff check .
-      - run: mypy chatbot_eval
+      - run: mypy chatbot_eval supportbot
       - run: pytest --cov=chatbot_eval --cov-report=term-missing
 
   evaluate:
