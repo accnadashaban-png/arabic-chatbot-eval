@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 from chatbot_eval.bots import Bot, BotError, HttpBot, MockBot
-from chatbot_eval.builder import build_cases, training_questions
+from chatbot_eval.builder import build_cases, build_holdout, training_questions
 from chatbot_eval.compare import compare
 from chatbot_eval.dataset import DatasetError, balance, contamination, coverage_gaps, load_cases, near_duplicates, save_cases
 from chatbot_eval.gates import Gates, decide
@@ -30,23 +30,30 @@ from chatbot_eval.runner import Run, run
 
 ROOT = Path(__file__).resolve().parent.parent
 GOLDEN, TRAINING, GATES = ROOT / "data" / "golden.csv", ROOT / "data" / "training_faq.csv", ROOT / "data" / "gates.json"
+HOLDOUT = ROOT / "data" / "holdout.csv"
 
 
 def load_training(path: Path) -> list[str]:
+    """Questions the bot was built or trained on: a CSV with a `question` column, or a knowledge-base FAQ whose
+    `questions` column lists several, separated by "|"."""
     if not path.exists():
         return []
     with path.open(encoding="utf-8-sig", newline="") as f:
-        return [row["question"] for row in csv.DictReader(f) if row.get("question")]
+        out: list[str] = []
+        for row in csv.DictReader(f):
+            out += [row["question"]] if row.get("question") else [q for q in (row.get("questions") or "").split("|") if q]
+        return out
 
 
 def cmd_build(_: argparse.Namespace) -> int:
     cases = build_cases()
     save_cases(cases, GOLDEN)
+    save_cases(build_holdout(), HOLDOUT)
     with TRAINING.open("w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["question"])
         writer.writerows([q] for q in training_questions())
-    print(f"wrote {len(cases)} cases to {GOLDEN.relative_to(ROOT)}")
+    print(f"wrote {len(cases)} cases to {GOLDEN.relative_to(ROOT)} and the held-out set to {HOLDOUT.relative_to(ROOT)}")
     return 0
 
 
@@ -68,7 +75,10 @@ def make_bot(spec: str) -> Bot:
         return MockBot(int(spec.split(":v")[1]) if ":v" in spec else 1)
     if spec == "http":
         return HttpBot.from_env()
-    raise SystemExit(f"unknown bot {spec!r}: use mock, mock:v2 or http")
+    if spec == "support":
+        from supportbot.bot import SupportBot  # the bot shipped with this repo; the evaluator does not depend on it
+        return SupportBot()
+    raise SystemExit(f"unknown bot {spec!r}: use mock, mock:v2, support or http")
 
 
 def cmd_run(a: argparse.Namespace) -> int:
@@ -111,6 +121,11 @@ def cmd_demo(_: argparse.Namespace) -> int:
     out = ROOT / "reports"
     report(str(first), str(GOLDEN), str(GATES), None, str(out / "demo-round1.xlsx"), str(out / "demo-round1.md"))
     report(str(second), str(GOLDEN), str(GATES), str(first), str(out / "demo-round2.xlsx"), str(out / "demo-round2.md"))
+    bot = make_bot("support")
+    dev = run(cases, bot, label="Support bot, development set").save(runs / "support-dev.jsonl")
+    held = run(load_cases(HOLDOUT), bot, label="Support bot, held-out set").save(runs / "support-holdout.jsonl")
+    report(str(dev), str(GOLDEN), str(GATES), None, str(out / "support-dev.xlsx"), str(out / "support-dev.md"))
+    report(str(held), str(HOLDOUT), str(GATES), None, str(out / "support-holdout.xlsx"), str(out / "support-holdout.md"))
     return 0
 
 
@@ -163,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     v.set_defaults(fn=cmd_validate)
     r = sub.add_parser("run")
     r.add_argument("--data", default=str(GOLDEN))
-    r.add_argument("--bot", default="mock", help="mock, mock:v2 or http")
+    r.add_argument("--bot", default="mock", help="mock, mock:v2, support or http")
     r.add_argument("--workers", type=int, default=4)
     r.add_argument("--label", default="")
     r.add_argument("--out")

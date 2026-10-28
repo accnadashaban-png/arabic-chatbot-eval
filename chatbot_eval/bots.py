@@ -15,7 +15,7 @@ from chatbot_eval.text import detect_language, normalize
 class Bot(Protocol):
     name: str
 
-    def ask(self, question: str) -> str: ...
+    def ask(self, question: str, history: list[dict[str, str]] | None = None) -> str: ...
 
 
 class BotError(RuntimeError):
@@ -41,9 +41,9 @@ class HttpBot:
         return cls(os.environ["BOT_URL"], os.environ.get("BOT_API_KEY", ""), os.environ.get("BOT_MODEL", "default"),
                    os.environ.get("BOT_SYSTEM_PROMPT", ""))
 
-    def ask(self, question: str) -> str:
+    def ask(self, question: str, history: list[dict[str, str]] | None = None) -> str:
         messages = ([{"role": "system", "content": self.system_prompt}] if self.system_prompt else []) + \
-                   [{"role": "user", "content": question}]
+                   list(history or []) + [{"role": "user", "content": question}]
         last = ""
         for attempt in range(self.retries + 1):
             try:
@@ -135,7 +135,8 @@ class MockBot:
                 return intent
         return "unknown"
 
-    def ask(self, question: str) -> str:
+    def ask(self, question: str, history: list[dict[str, str]] | None = None) -> str:
+        """Both rounds ignore the conversation history, so follow-up questions fail, as they often do."""
         lang = detect_language(question)
         reply_ar = lang == "ar" or (lang == "franco" and self.version >= 2)
         intent = self.intent(question)

@@ -48,9 +48,13 @@ class Run:
 def run(cases: list[Case], bot: Bot, workers: int = 4, label: str = "") -> Run:
     """Ask every question (in parallel, order kept) and check every answer. One failing call never stops the run."""
     def one(case: Case) -> CaseResult:
+        history: list[dict[str, str]] = []
         start = time.perf_counter()
         try:
-            answer, error = bot.ask(case.question), ""
+            for turn in case.history:  # replay earlier turns with the bot's own replies; only the last answer is checked
+                history += [{"role": "user", "content": turn}, {"role": "assistant", "content": bot.ask(turn, list(history))}]
+            start = time.perf_counter()
+            answer, error = bot.ask(case.question, history), ""
         except Exception as exc:  # noqa: BLE001 - record and continue
             answer, error = "", f"{type(exc).__name__}: {exc}"[:300]
         return check(case, answer, (time.perf_counter() - start) * 1000, error)

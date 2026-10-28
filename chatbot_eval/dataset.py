@@ -1,6 +1,7 @@
 """Golden dataset: the schema of a test case, loading and saving, and dataset quality checks.
 
 CSV encoding of the list columns:
+    history            earlier user messages of a multi-turn case, separated by "||"
     must_include       groups separated by ";", options inside a group by "|"
                        every group must be matched by at least one option: "إلغاء|cancel;الإعدادات|Settings"
     must_not_include   options separated by "|"; none may appear
@@ -18,11 +19,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from chatbot_eval.text import normalize, similarity
 
 Dialect = Literal["egyptian", "gulf", "levantine", "maghrebi", "msa", "english", "franco", "mixed"]
-TestType = Literal["happy_path", "paraphrase", "edge_case", "out_of_scope", "adversarial"]
+TestType = Literal["happy_path", "paraphrase", "edge_case", "out_of_scope", "adversarial", "multi_turn"]
 Behavior = Literal["answer", "refuse", "handoff", "clarify"]
 DIALECTS: tuple[str, ...] = Dialect.__args__  # type: ignore[attr-defined]
 COLUMNS = ["id", "question", "dialect", "intent", "test_type", "difficulty", "expected_language", "expected_behavior",
-           "must_include", "must_not_include", "critical", "variant_of", "notes"]
+           "must_include", "must_not_include", "critical", "variant_of", "history", "notes"]
 
 
 class Case(BaseModel):
@@ -38,6 +39,7 @@ class Case(BaseModel):
     must_not_include: list[str] = Field(default_factory=list)
     critical: bool = False  # a failure here blocks launch on its own (safety, privacy)
     variant_of: str = ""    # id of the case this one rephrases on purpose (spelling, greeting, context)
+    history: list[str] = Field(default_factory=list)  # earlier user messages in the same conversation
     notes: str = ""
 
     @field_validator("must_include")
@@ -51,7 +53,8 @@ class Case(BaseModel):
         return {**{k: str(getattr(self, k)) for k in ("id", "question", "dialect", "intent", "test_type", "difficulty",
                                                     "expected_language", "expected_behavior", "variant_of", "notes")},
                 "must_include": ";".join("|".join(g) for g in self.must_include),
-                "must_not_include": "|".join(self.must_not_include), "critical": "yes" if self.critical else ""}
+                "must_not_include": "|".join(self.must_not_include), "critical": "yes" if self.critical else "",
+                "history": " || ".join(self.history)}
 
 
 class DatasetError(ValueError):
@@ -61,11 +64,13 @@ class DatasetError(ValueError):
 def _parse_row(row: dict[str, str]) -> Case:
     def split(value: str | None, sep: str) -> list[str]:
         return [p.strip() for p in (value or "").split(sep) if p.strip()]
-    return Case(**{**{k: (row.get(k) or "").strip() for k in COLUMNS if k not in ("must_include", "must_not_include", "critical")},
+    listed = ("must_include", "must_not_include", "critical", "history")
+    return Case(**{**{k: (row.get(k) or "").strip() for k in COLUMNS if k not in listed},
                    "expected_behavior": (row.get("expected_behavior") or "answer").strip(),
                    "must_include": [split(g, "|") for g in split(row.get("must_include"), ";")],
                    "must_not_include": split(row.get("must_not_include"), "|"),
-                   "critical": (row.get("critical") or "").strip().lower() in ("yes", "true", "1")})
+                   "critical": (row.get("critical") or "").strip().lower() in ("yes", "true", "1"),
+                   "history": split(row.get("history"), "||")})
 
 
 def load_cases(path: str | Path) -> list[Case]:
@@ -115,7 +120,8 @@ def near_duplicates(cases: list[Case], threshold: float = 0.9) -> list[tuple[str
             for b in group[i + 1:]:
                 if root(a) == root(b):
                     continue  # declared variants of the same question are meant to be close
-                s = 1.0 if normalize(a.question) == normalize(b.question) else similarity(a.question, b.question)
+                x, y = " ".join([*a.history, a.question]), " ".join([*b.history, b.question])  # the whole conversation
+                s = 1.0 if normalize(x) == normalize(y) else similarity(x, y)
                 if s >= threshold:
                     pairs.append((a.id, b.id, round(s, 3)))
     return pairs
