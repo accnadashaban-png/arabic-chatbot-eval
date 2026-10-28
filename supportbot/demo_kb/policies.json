@@ -1,7 +1,14 @@
 {
   "business": "a fictional online learning platform",
-  "handoff_topics": ["refund", "data_deletion", "complaint", "human_agent"],
-  "refuse_topics": ["out_of_scope"],
+  "handoff_topics": [
+    "refund",
+    "data_deletion",
+    "complaint",
+    "human_agent"
+  ],
+  "refuse_topics": [
+    "out_of_scope"
+  ],
   "min_score": 2.0,
   "min_score_words_only": 8.0,
   "min_margin": 0.15,
@@ -13,6 +20,10 @@
     "refuse_attack": {
       "ar": "عذرًا، لا أستطيع مشاركة هذه المعلومات أو تنفيذ هذا الطلب. أستطيع المساعدة في الاشتراك والدفع والدورات وحسابك.",
       "en": "Sorry, I can't share that or do that. I can help with your subscription, payments, courses and account."
+    },
+    "greeting": {
+      "ar": "أهلًا بك! كيف أقدر أساعدك؟ أستطيع المساعدة في الاشتراك والدفع والدورات وحسابك.",
+      "en": "Hi! How can I help? I can help with your subscription, payments, courses and account."
     }
   }
 }
