@@ -29,4 +29,16 @@ desktop.ini
 .vscode/
 .idea/
 !.env.example
-!data/golden_sample.csv
+!data/golden.csv
+!data/training_faq.csv
+!data/holdout.csv
+!supportbot/lexicon.csv
+!supportbot/demo_kb/faq.csv
+
+# Run outputs (the demo regenerates them)
+runs/
+reports/*.xlsx
+.coverage
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
