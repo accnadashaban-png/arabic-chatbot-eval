@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.0
+
+- **Live database** (`supportbot/store.py`): knowledge base, settings and a masked conversation log in SQLite or
+  PostgreSQL; the bot picks up changes within seconds without a restart. Identical answers on both databases, tested.
+- **Admin API**: manage entries, conversation insights with content gaps, and LLM provider status, behind `SB_ADMIN_KEY`.
+- **LLM provider group**: per-failure cooldowns (quota, rate limit with `Retry-After`, invalid key, outage with growing
+  pauses), the next provider answers at once, the soonest to recover is tried when all rest, status without keys.
+- **LLM choice when retrieval is unsure**: the model picks among the three closest entries or asks to clarify; its
+  choice and wording pass the same grounding checks, and hand-offs are never rewritten.
+- **Embeddable widget** (`/widget.js`): launcher in the corner, dark theme, right-to-left aware, Shadow DOM, full screen
+  on phones; demo product page. CORS allow-list (`SB_ALLOWED_ORIGINS`) and per-visitor rate limit for public use.
+- Fixed: card numbers followed by text were masked together with the following space.
+- 133 tests; CI runs the PostgreSQL tests against a PostgreSQL 16 service.
+
 ## 2.0.0
 
 **Evaluation toolkit (`chatbot_eval`)**

@@ -42,3 +42,4 @@ reports/*.xlsx
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+supportbot.db*

@@ -39,21 +39,34 @@ Method: [docs/METHOD.md](docs/METHOD.md) · dataset format: [docs/DATASET.md](do
 
 ## The support bot
 
+A standalone assistant that runs on its own server, reads a **live database** and sits in the corner of any website or app.
+
+| English | Arabic (right-to-left) |
+|---|---|
+| ![The widget answering a price question, a follow-up and a refund request handed to the team](docs/widget-en.jpg) | ![The same widget in Arabic](docs/widget-ar.jpg) |
+
 ```
-message -> guard -> knowledge lookup (dialect lexicon + BM25) -> follow-up handling -> policy -> answer -> checks
+message -> guard -> knowledge lookup (dialect lexicon + BM25) -> follow-up -> policy -> answer (knowledge base or LLM) -> checks
+                         ^ live database: changes are picked up in seconds, conversations are logged for insights
 ```
 
-- **Your content:** a `faq.csv`, a `policies.json` (what goes to people, what is refused, thresholds) and optionally your own words in `lexicon.csv`. See [docs/SUPPORTBOT.md](docs/SUPPORTBOT.md).
+- **Live database:** knowledge base, settings and a conversation log in SQLite (no setup) or PostgreSQL. Add or change an answer through the admin API, a script or another system and the bot uses it within seconds, without a restart. Tested on both databases with identical answers.
+- **Admin API:** manage entries, see **insights** (answered rate, hand-offs, top topics, and the questions the bot could not answer: your next content to write) and the state of each LLM provider. Behind its own key.
 - **Arabic that people really write:** a lexicon maps dialect, English and Franco words to shared concepts (`بكام`, `قديش`, `شحال`, `how much` → price), with light stemming and tolerance for one typo.
 - **Knows when not to answer:** refunds, complaints, data deletion and "talk to a person" go to your team; off-topic requests are declined; unclear messages get a question back.
 - **Conversation memory:** "and the yearly one?" is read with the previous question.
-- **Optional LLM, never trusted blindly:** any OpenAI-compatible providers in order (free tiers welcome); an answer is used only if every number and link is in the sources, it is in the right language, has no markup, and repeats nothing from the instructions. Otherwise the knowledge-base answer is sent.
-- **Guardrails:** prompt injection in Arabic, English and Franco (also spaced out, with digit swaps or hidden characters), credential requests, requests for other users' data, SQL; personal data is masked in logs.
-- **Server:** an OpenAI-compatible endpoint and an RTL-aware chat page, standard library only.
+- **A group of LLM providers that never leaves users waiting:** list several (free tiers welcome). A provider out of credit rests for hours, a rate-limited one for a minute, one that is down for seconds with growing pauses; the next one answers at once and the first comes back when ready. If all are down, the knowledge base still answers.
+- **Smarter, never trusted blindly:** when retrieval is unsure, the model picks among the closest entries or asks the user to clarify; it may reword answers but every number and link must come from the sources, in the right language, with no markup and nothing from its instructions. Hand-offs and refusals are never rewritten.
+- **Guardrails:** prompt injection in Arabic, English and Franco (also spaced out, with digit swaps or hidden characters), credential requests, requests for other users' data, SQL; personal data is masked in logs and in the database.
+- **Embeddable widget:** one script tag, a launcher in the corner, dark and RTL-aware, isolated in a Shadow DOM, full screen on phones. Only the websites you list may call the bot from a browser, and each visitor is rate limited.
 
 ```bash
-python -m supportbot serve                 # http://127.0.0.1:8070
-python -m supportbot ask "الاشتراك بكام؟"
+python -m supportbot serve                 # http://127.0.0.1:8070, creates supportbot.db from the demo knowledge base
+SB_DATABASE_URL=postgresql://user:pass@host/db python -m supportbot serve
+```
+
+```html
+<script src="https://your-bot-host/widget.js" data-api="https://your-bot-host" data-name="Lernova Assistant" defer></script>
 ```
 
 ## Red team
@@ -65,7 +78,7 @@ python -m supportbot ask "الاشتراك بكام؟"
 ```bash
 pip install -e ".[dev]"
 python -m chatbot_eval demo        # UAT demo rounds + the support bot on both sets; reports in reports/
-pytest                             # 121 tests
+pytest                             # 133 tests
 ```
 
 **Test your own bot** (any OpenAI-compatible endpoint):
@@ -81,11 +94,11 @@ python -m chatbot_eval report runs/<run>.jsonl --xlsx round1.xlsx --md round1.md
 
 ```
 chatbot_eval/   the evaluator: dataset, builder, checks, runner, metrics, gates, compare, review, judge, reports
-supportbot/     the bot: arabic, lexicon, knowledge (BM25), guard, llm, bot, server, web chat page, demo_kb/
+supportbot/     the bot: arabic, lexicon, knowledge (BM25), guard, llm (provider group), store (live database), bot, server, web widget, demo_kb/
 data/           golden set, held-out set, training FAQ, gates
 docs/           method, dataset format, support bot guide
 reports/        demo and support-bot reports
-tests/          121 tests: statistics by hand, every check, the bot, red team, server, end to end
+tests/          133 tests: statistics by hand, every check, the bot, red team, live database, server, end to end
 ```
 
 The bot and the evaluator share no code on purpose: a text-handling bug in both would hide itself.
