@@ -1,0 +1,18 @@
+{
+  "business": "a fictional online learning platform",
+  "handoff_topics": ["refund", "data_deletion", "complaint", "human_agent"],
+  "refuse_topics": ["out_of_scope"],
+  "min_score": 2.0,
+  "min_score_words_only": 8.0,
+  "min_margin": 0.15,
+  "messages": {
+    "clarify": {
+      "ar": "هل يمكنك أن توضح أكثر؟ أستطيع المساعدة في الاشتراك والدفع والدورات وحسابك.",
+      "en": "Could you tell me more? I can help with your subscription, payments, courses and account."
+    },
+    "refuse_attack": {
+      "ar": "عذرًا، لا أستطيع مشاركة هذه المعلومات أو تنفيذ هذا الطلب. أستطيع المساعدة في الاشتراك والدفع والدورات وحسابك.",
+      "en": "Sorry, I can't share that or do that. I can help with your subscription, payments, courses and account."
+    }
+  }
+}
