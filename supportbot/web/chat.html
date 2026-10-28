@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support assistant</title>
+<style>
+  :root { --bg:#F7F4EE; --panel:#fff; --soft:#F1EDE4; --fg:#1E2A28; --muted:#5B6763; --faint:#8A948F; --line:#E6E0D5;
+          --accent:#1F5A4F; --accent-soft:#E4EEE9; --sand:#EFE6D8; --warm:#9A5B1E; --warmbg:#F6EBDC;
+          --font:"Inter","IBM Plex Sans Arabic",system-ui,"Segoe UI",Tahoma,sans-serif; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121917; --panel:#1A2421; --soft:#17201D; --fg:#E6ECE9; --muted:#9AA8A3;
+          --faint:#74827D; --line:#2A3632; --accent:#7CC4AE; --accent-soft:#1F3530; --sand:#2A2F26; --warm:#E8B07A; --warmbg:#2E261C; } }
+  * { box-sizing:border-box; } html, body { height:100%; } [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 var(--font); display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--line); font-weight:650; }
+  header svg { width:28px; height:28px; } header small { margin-inline-start:auto; color:var(--faint); font-weight:400; }
+  #scroll { flex:1; overflow-y:auto; }
+  .col { max-width:760px; margin:0 auto; padding:0 20px; }
+  #log { display:flex; flex-direction:column; gap:18px; padding:28px 20px; }
+  .me { align-self:flex-end; max-width:80%; background:var(--sand); border-radius:18px; padding:9px 15px; white-space:pre-wrap; }
+  .bot { display:flex; gap:12px; } .bot svg { width:26px; height:26px; flex:none; margin-top:2px; }
+  .meta { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; font-size:12px; color:var(--faint); }
+  .tag { padding:1px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
+  .tag.handoff { background:var(--warmbg); color:var(--warm); }
+  #empty h1 { font-size:26px; font-weight:600; letter-spacing:-.02em; margin:48px 0 6px; } #empty p { color:var(--muted); margin:0 0 20px; }
+  .chips { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .chips button { text-align:start; border:1px solid var(--line); background:var(--panel); color:var(--fg); border-radius:14px; padding:10px 13px; font:inherit; cursor:pointer; }
+  .chips button:hover { border-color:var(--accent); }
+  form { display:flex; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:7px 7px 7px 16px; margin:10px 0 16px;
+         box-shadow:0 1px 2px rgba(30,42,40,.04),0 8px 24px rgba(30,42,40,.06); }
+  input { flex:1; border:0; outline:0; background:transparent; color:var(--fg); font:inherit; min-width:0; }
+  button.send { width:38px; height:38px; border:0; border-radius:12px; background:var(--accent); color:var(--bg); cursor:pointer; font-size:18px; }
+  button.send:disabled { opacity:.4; }
+  @media (max-width:640px) { .chips { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="spark" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="var(--accent)"/><path fill="var(--bg)" d="M30 12C31.6 24.6 37.4 30.4 50 32C37.4 33.6 31.6 39.4 30 52C28.4 39.4 22.6 33.6 10 32C22.6 30.4 28.4 24.6 30 12Z"/><path fill="var(--bg)" opacity=".7" d="M48 8C48.6 12.6 50.4 14.4 55 15C50.4 15.6 48.6 17.4 48 22C47.4 17.4 45.6 15.6 41 15C45.6 14.4 47.4 12.6 48 8Z"/></symbol></svg>
+<header><svg><use href="#spark"/></svg>Support assistant<small>Demo knowledge base · fictional platform</small></header>
+<div id="scroll">
+  <div class="col" id="empty">
+    <h1>How can we help?</h1>
+    <p>Ask in Arabic (any dialect), English or Franco. · اسأل بأي لهجة.</p>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="col" id="log" aria-live="polite" hidden></div>
+</div>
+<div class="col"><form id="ask"><input id="q" dir="auto" maxlength="500" autocomplete="off" placeholder="Type your question… اكتب سؤالك" aria-label="Your question"><button class="send" id="send" aria-label="Send">↑</button></form></div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const LABEL = {answer: "answer", handoff: "passed to the team", refuse: "declined", clarify: "asked to clarify"};
+  let messages = [];
+  function add(html, cls) {
+    $("empty").hidden = true; $("log").hidden = false;
+    const d = document.createElement("div"); d.className = cls; d.dir = "auto"; d.innerHTML = html; $("log").appendChild(d);
+    $("scroll").scrollTop = $("scroll").scrollHeight; return d;
+  }
+  async function ask(q) {
+    add(esc(q), "me"); messages.push({role: "user", content: q}); $("send").disabled = true;
+    try {
+      const r = await fetch("/v1/chat/completions", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({messages})});
+      const data = await r.json(); if (!r.ok) throw new Error(data.error || "error");
+      const text = data.choices[0].message.content, info = data.supportbot || {};
+      messages.push({role: "assistant", content: text});
+      const tags = [`<span class="tag ${esc(info.behavior)}">${esc(LABEL[info.behavior] || info.behavior)}</span>`]
+        .concat((info.sources || []).map((s) => `<span>${esc(s)}</span>`), info.mode === "llm" ? ["<span>AI-written, grounded</span>"] : []);
+      add(`<svg><use href="#spark"/></svg><div><div>${esc(text)}</div><div class="meta">${tags.join("")}</div></div>`, "bot");
+    } catch (e) { add(`<svg><use href="#spark"/></svg><div>${esc(e.message)}</div>`, "bot"); }
+    finally { $("send").disabled = false; $("q").focus(); }
+  }
+  $("ask").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(); if (q && !$("send").disabled) { $("q").value = ""; ask(q); } };
+  ["الاشتراك بكام؟", "How do I cancel?", "نسيت الباسورد", "عايز أكلم حد من الدعم"].forEach((s) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = s; b.dir = "auto"; b.onclick = () => ask(s); $("chips").appendChild(b); });
+</script>
+</body>
+</html>
