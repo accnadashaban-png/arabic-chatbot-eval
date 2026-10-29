@@ -11,7 +11,7 @@ CARD,بطاقة|البطاقة|بطاقتي|كارت|الكارت|الكارطة
 METHOD,طرق|طريقة|وسائل|وسيلة|كاش|تحويل|بنكي|paypal|cash|transfer|methods|ways|toro2
 DECLINED,ترفض|بترفض|تترفض|رفض|كترفض|تنرفض|declined|decline|failed|فشل|بيفشل|btetrefed
 INVOICE,فاتورة|الفاتورة|فواتير|الفواتير|فواتيري|invoice|invoices|receipt|receipts|fatora|fawater
-CERTIFICATE,شهادة|الشهادة|شهادات|certificate|certificates|shehada
+CERTIFICATE,شهادة|الشهادة|شهادات|certificate|certificates|shehada|شهادتي|شهادتك
 PASSWORD,باسورد|الباسورد|كلمة السر|كلمة المرور|الرقم السري|مودباس|المودباس|password|nseet
 LOGIN,دخول|ادخل|أدخل|ندخل|فوت|login|log in|sign in|تسجيل الدخول
 EMAIL,إيميل|ايميل|الإيميل|البريد|email|mail
@@ -20,7 +20,7 @@ CHANGE,غير|أغير|اغير|غيّر|بغيّر|نبدل|بدل|تغيير|�
 ACCOUNT,حساب|الحساب|حسابي|أكونت|الأكونت|account
 COURSE,كورس|الكورس|كورسات|الكورسات|دورة|الدورة|دورات|الدورات|دوراتي|course|courses|lesson|lessons
 MISSING,لاقي|ألاقي|ألقى|القى|لقيت|نلقى|ما لقيتش|اختفى|اختفت|راح|راحت|مش ظاهر|find|disappeared|missing|la2y|e5tafa
-VIDEO,فيديو|الفيديو|فيديوهات|المقطع|video|videos|play|buffering|freezing|يعلق|يعلّق|بيقف|يتوقف|كيحبس
+VIDEO,فيديو|الفيديو|فيديوهات|المقطع|video|videos|play|المقاطع|مقاطع|مقطع
 APP,أبلكيشن|ابلكيشن|الأبلكيشن|تطبيق|التطبيق|app|application|آيفون|الآيفون|ايفون|iphone|أندرويد|الأندرويد|android|ios|mobile app
 LIVE,لايف|اللايف|لايفات|البث|مباشر|المباشرة|الجلسة|جلسة|الجلسات|live|webinar|session|sessions
 RECORDING,تسجيل|التسجيل|تسجيلات|مسجلة|recording|recorded|فاتني|فاتتني|لحقت|miss
@@ -33,7 +33,8 @@ COMPLAINT,أشتكي|اشتكي|بشتكي|كنشكي|شكوى|complaint|complai
 HUMAN,أكلم|اكلم|أتكلم|اتكلم|نتكلم|احكي|نهضر|أتواصل|اتواصل|نتواصل|موظف|human|agent|person|akalem|mowazaf|customer service|خدمة العملاء|live agent
 THANKS,شكرا|شكرًا|أشكرك|اشكرك|متشكر|مشكور|يسلمو|يعطيك العافية|الله يخليك|thanks|thank you|shokran|merci
 OFFTOPIC,سهم|أسهم|stock|stocks|الطقس|الجو|weather|gaw|وصفة|طبخ|أكل|recipe|قصيدة|poem|essay|الفضاء|الطاجين|sahm
-TRIAL,تجربة|مجانية|مجاني|trial|free trial
-DISCOUNT,خصم|خصومات|كوبون|كود خصم|discount|coupon|promo
-LANGUAGE,مترجم|مترجمة|ترجمة|subtitles|subtitled|لغة الترجمة
-NOTWORKING,مش شغال|مش بيشتغل|ما يشتغل|ما عم يشتغل|لا يعمل|ما خدامش|ماخدامش|ما عم يزبط|يزبط|مش راضي|ما يمشي|لا تكتمل|ما بغاش|not working|doesn't work|won't|go through|msh shaghal
+TRIAL,تجربة|مجانية|مجاني|trial|free trial|أجرب|اجرب|أجرّب|جرّب|جرب|نجرب|التجربة|تجريبية|فابور|ajarab|try
+DISCOUNT,خصم|خصومات|كوبون|كود خصم|discount|coupon|promo|كوبونات|كود حسم|حسم|تخفيض|تخفيضات|الريميز|5asm|promo code|discounts|coupons|offers
+LANGUAGE,مترجم|مترجمة|ترجمة|subtitles|subtitled|لغة الترجمة|بالعربي|عربي|بالعربية|إنجليزي|انجليزي|بالإنجليزي|بالإنكليزي|بالنجليزية|3araby|language|لغة
+NOTWORKING,مش شغال|مش بيشتغل|ما يشتغل|ما عم يشتغل|لا يعمل|ما خدامش|ماخدامش|ما عم يزبط|يزبط|مش راضي|ما يمشي|لا تكتمل|ما بغاش|not working|doesn't work|won't|go through|msh shaghal|يعلق|يعلّق|بيقف|يتوقف|كيحبس|freezing|buffering
+DOWNLOAD,أنزل|انزل|أنزّل|نزّل|نزل|انزّل|تنزيل|أحمل|احمل|أحمّل|بحمّل|نحمّل|تحميل|التحميل|نيكيشارجي|download|downloads|anazel|a7amel

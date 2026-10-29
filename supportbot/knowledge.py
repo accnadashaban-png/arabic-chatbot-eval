@@ -2,6 +2,8 @@
 
 Bring your own content: a folder with
     faq.csv        id, topic, concepts, questions (| separated), answer_ar, answer_en
+                   A concept written with "!" is required: "!TEAM PRICE" is only considered when the message is about
+                   a team, so "how much is the yearly plan?" stays with pricing.
     policies.json  which topics hand off to people or are refused, confidence thresholds, fixed messages
 The lexicon maps dialect, English and Franco words to shared concepts, so "بكام", "قديش", "شحال" and
 "how much" all find the pricing entry.
@@ -25,7 +27,7 @@ CONCEPT_WEIGHT = 3  # a concept counts like three ordinary words
 # Descriptors that narrow a request but do not name it ("when", "course", "account"): a topic concept such as
 # CERTIFICATE outranks them, so "is there a certificate after the course?" is about the certificate.
 SECONDARY = frozenset({"SCHEDULE", "COURSE", "ACCOUNT", "CHANGE", "MONTHLY", "YEARLY", "SUBSCRIPTION", "PAY", "DATA",
-                       "NOTWORKING", "MISSING", "RECORDING", "PHONE"})
+                       "NOTWORKING", "MISSING", "RECORDING", "PHONE", "DOWNLOAD"})
 STOPWORDS = frozenset(stem(fold(w)) for w in [
     "في", "من", "على", "علي", "عن", "الى", "إلى", "هل", "ما", "ماذا", "كيف", "ازاي", "إزاي", "شو", "وش", "ايه",
     "إيه", "انا", "أنا", "انت", "هو", "هي", "هذا", "هذه", "ده", "دي", "اللي", "التي", "الذي", "او", "أو", "لو",
@@ -46,6 +48,17 @@ class Entry:
     concepts: frozenset[str]
     questions: tuple[str, ...]
     answer: dict[str, str]
+    required: frozenset[str] = frozenset()  # concepts the message must name for this entry to compete
+
+    @property
+    def concept_text(self) -> str:
+        return " ".join(f"!{c}" if c in self.required else c for c in sorted(self.concepts))
+
+
+def parse_concepts(text: str) -> tuple[frozenset[str], frozenset[str]]:
+    """'!TEAM PRICE' -> ({TEAM, PRICE}, {TEAM})."""
+    words = text.split()
+    return frozenset(w.lstrip("!") for w in words if w.lstrip("!")), frozenset(w[1:] for w in words if w.startswith("!") and w[1:])
 
 
 @dataclass
@@ -112,8 +125,14 @@ def one_typo(a: str, b: str) -> bool:
 
 def load_entries(folder: Path) -> list[Entry]:
     with (folder / "faq.csv").open(encoding="utf-8-sig", newline="") as f:
-        return [Entry(r["id"], r["topic"], frozenset(r["concepts"].split()), tuple(q for q in r["questions"].split("|") if q),
-                      {"ar": r["answer_ar"], "en": r["answer_en"]}) for r in csv.DictReader(f)]
+        return [make_entry(r["id"], r["topic"], r["concepts"], r["questions"], r["answer_ar"], r["answer_en"])
+                for r in csv.DictReader(f)]
+
+
+def make_entry(id_: str, topic: str, concepts: str, questions: str, answer_ar: str, answer_en: str) -> Entry:
+    """An entry from its stored text form (questions separated by |, concepts by spaces, ! for required)."""
+    names, required = parse_concepts(concepts)
+    return Entry(id_, topic, names, tuple(q for q in questions.split("|") if q), {"ar": answer_ar, "en": answer_en}, required)
 
 
 def load_policies(folder: Path) -> dict[str, Any]:
@@ -159,7 +178,7 @@ class Index:
             scores.append((s, e))
         # Concepts lead, words break ties: when the message names a known concept, only entries about that concept
         # compete. A word that merely appears in some answer ("المشكلة") must not pull a vague message to a topic.
-        anchored = [(s, e) for s, e in scores if e.concepts & concepts]
+        anchored = [(s, e) for s, e in scores if e.concepts & concepts and e.required <= concepts]
         pool = anchored or scores
         def rank(e: Entry) -> tuple[int, int]:
             shared = e.concepts & concepts

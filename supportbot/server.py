@@ -8,8 +8,14 @@ Standard library only. Security for a public widget: only the sites in SB_ALLOWE
 browser (CORS), each visitor is rate limited, requests are size limited and personal data is masked in logs.
 SB_API_KEY adds a bearer key for server-to-server use (a key in browser code would be public).
 
-Admin API (header X-Admin-Key = SB_ADMIN_KEY; disabled when no key is set):
+People and chats: send your user id as the OpenAI `user` field (the widget sends an anonymous visitor id) and the chat
+id as the X-Chat-Id header; the reply returns the chat id. GET /v1/chats/<chat id>?user=<user id> returns a person's
+own chat, so a returning visitor sees their conversation.
+
+Admin API (header X-Admin-Key = SB_ADMIN_KEY; disabled when no key is set), and the console at /admin:
     GET /admin/entries · PUT /admin/entries/<id> · DELETE /admin/entries/<id> · GET /admin/insights?days=7 · GET /admin/llm
+    GET /admin/users?search= · GET /admin/users/<id> · PATCH /admin/users/<id> · DELETE /admin/users/<id> (erase a person)
+    GET /admin/chats · GET /admin/chats/<id>
 """
 from __future__ import annotations
 
@@ -20,6 +26,7 @@ import os
 import re
 import threading
 import time
+import uuid
 from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -35,6 +42,9 @@ WEB = Path(__file__).with_name("web")
 MAX_BODY = 64_000
 MAX_MESSAGES = 40
 ENTRY_PATH = re.compile(r"^/admin/entries/([A-Za-z0-9_-]{1,40})$")
+ID = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+USER_PATH = re.compile(r"^/admin/users/([A-Za-z0-9_-]{6,64})$")
+CHAT_PATH = re.compile(r"^/(?:admin|v1)/chats/([A-Za-z0-9_-]{6,64})$")
 
 
 class RateLimiter:
@@ -119,7 +129,7 @@ def make_handler(bot: SupportBot, api_key: str = "", allowed_origins: tuple[str,
                 store = bot.store
                 assert store is not None
                 if path == "/admin/entries":
-                    return self._json(200, {"entries": [{"id": e.id, "topic": e.topic, "concepts": sorted(e.concepts),
+                    return self._json(200, {"entries": [{"id": e.id, "topic": e.topic, "concepts": e.concept_text.split(),
                                                          "questions": list(e.questions),
                                                          **{f"answer_{k}": v for k, v in e.answer.items()}}
                                                         for e in store.entries()]})
@@ -128,7 +138,30 @@ def make_handler(bot: SupportBot, api_key: str = "", allowed_origins: tuple[str,
                     return self._json(200, store.insights(max(1, min(days, 365))))
                 if path == "/admin/llm":
                     return self._json(200, {"providers": bot.llm.status() if bot.llm else []})
+                query = parse_qs(urlsplit(self.path).query)
+                if path == "/admin/users":
+                    return self._json(200, {"users": store.users((query.get("search") or [""])[0][:100])})
+                if m := USER_PATH.match(path):
+                    users = [u for u in store.users(m.group(1)) if u["id"] == m.group(1)]
+                    if not users:
+                        return self._json(404, {"error": "no such person"})
+                    return self._json(200, {**users[0], "chat_list": store.chats(m.group(1))})
+                if path == "/admin/chats":
+                    return self._json(200, {"chats": store.chats()})
+                if m := CHAT_PATH.match(path):
+                    owner = store.chat_owner(m.group(1))
+                    if owner is None:
+                        return self._json(404, {"error": "no such chat"})
+                    return self._json(200, {"id": m.group(1), "user_id": owner, "turns": store.transcript(m.group(1))})
                 return self._json(404, {"error": "not found"})
+            if path == "/admin":
+                return self._send(200, (WEB / "admin.html").read_bytes(), "text/html; charset=utf-8")
+            if m := CHAT_PATH.match(path):  # a visitor's own chat, so the widget can show it again
+                user = (parse_qs(urlsplit(self.path).query).get("user") or [""])[0]
+                if not (bot.store and ID.match(user) and bot.store.chat_owner(m.group(1)) == user):
+                    return self._json(404, {"error": "no such chat"})
+                return self._json(200, {"turns": [{"question": t["question"], "answer": t["answer"], "behavior": t["behavior"]}
+                                                  for t in bot.store.transcript(m.group(1))]})
             if self.path in ("/", "/index.html"):
                 self._send(200, (WEB / "index.html").read_bytes(), "text/html; charset=utf-8")
             elif self.path == "/widget.js":
@@ -151,7 +184,24 @@ def make_handler(bot: SupportBot, api_key: str = "", allowed_origins: tuple[str,
             bot.refresh(force=True)
             self._json(200, {"id": entry.id, "topic": entry.topic, "live": True})
 
+        def do_PATCH(self) -> None:  # noqa: N802
+            m = USER_PATH.match(urlsplit(self.path).path)
+            if not m:
+                return self._json(404, {"error": "not found"})
+            if not self._admin():
+                return
+            try:
+                body = self._body()
+                ok = bot.store.set_profile(m.group(1), body.get("name"), body.get("email"))  # type: ignore[union-attr]
+            except (StoreError, ValueError, AttributeError):
+                return self._json(422, {"error": "send a JSON object with name and/or email"})
+            self._json(200 if ok else 404, {"id": m.group(1), "updated": ok})
+
         def do_DELETE(self) -> None:  # noqa: N802
+            if um := USER_PATH.match(urlsplit(self.path).path):
+                if not self._admin():
+                    return
+                return self._json(200, {"id": um.group(1), "deleted": bot.store.forget_user(um.group(1))})  # type: ignore[union-attr]
             m = ENTRY_PATH.match(urlsplit(self.path).path)
             if not m:
                 return self._json(404, {"error": "not found"})
@@ -186,7 +236,8 @@ def make_handler(bot: SupportBot, api_key: str = "", allowed_origins: tuple[str,
                     self.rfile.read(length)
                 return self._json(413, {"error": "request too large"})
             try:
-                messages = json.loads(self.rfile.read(length) or b"{}")["messages"][-MAX_MESSAGES:]
+                payload = json.loads(self.rfile.read(length) or b"{}")
+                messages = payload["messages"][-MAX_MESSAGES:]
                 turns = [{"role": str(m["role"]), "content": str(m["content"])[:2000]} for m in messages
                          if m.get("role") in ("user", "assistant")]
                 question = turns[-1]["content"]
@@ -194,17 +245,22 @@ def make_handler(bot: SupportBot, api_key: str = "", allowed_origins: tuple[str,
                     raise ValueError
             except (ValueError, KeyError, TypeError, IndexError):
                 return self._json(400, {"error": "send messages ending with a user message"})
+            user = str(payload.get("user") or "")
+            user = user if ID.match(user) else "anonymous"
+            chat = self.headers.get("X-Chat-Id", "")
+            if not ID.match(chat) or (bot.store and bot.store.chat_owner(chat) not in (None, user)):
+                chat = uuid.uuid4().hex  # a new chat; never append to someone else's
             start = time.perf_counter()
             reply = bot.respond(question, turns[:-1])
             log.info("%s -> %s (%s) in %.0f ms", redact(question)[:120], reply.topic or reply.behavior, reply.mode,
                      (time.perf_counter() - start) * 1000)
             if bot.store:
-                bot.store.log(question, reply.language, reply.topic, reply.behavior, reply.confidence, reply.mode,
-                              self.headers.get("X-Session", ""))
+                bot.store.record(user, chat, question, reply.text, reply.language, reply.topic, reply.behavior,
+                                 reply.confidence, reply.mode)
             self._json(200, {"id": f"sb-{int(time.time() * 1000)}", "object": "chat.completion", "model": bot.name,
                              "choices": [{"index": 0, "finish_reason": "stop",
                                           "message": {"role": "assistant", "content": reply.text}}],
-                             "supportbot": {k: v for k, v in reply.to_dict().items() if k != "text"}})
+                             "supportbot": {**{k: v for k, v in reply.to_dict().items() if k != "text"}, "chat_id": chat}})
     return Handler
 
 
