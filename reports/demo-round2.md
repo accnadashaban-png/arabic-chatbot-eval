@@ -1,6 +1,6 @@
 # Chatbot evaluation: UAT round 2
 
-**Decision: NO-GO** · bot `demo-bot-v2` · golden set `cf943a5e20f6` · 1769 cases
+**Decision: NO-GO** · bot `demo-bot-v2` · golden set `d1cb795c78d4` · 1769 cases
 
 Pass rate **45.4%** (95% interval 43.1% to 47.7%) · language match 97.4% · critical failures **0**
 
