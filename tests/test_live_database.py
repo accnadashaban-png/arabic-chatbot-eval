@@ -25,13 +25,29 @@ def store_for(url: str = "sqlite:///:memory:") -> Store:
 
 def test_seed_validate_and_version() -> None:
     s = store_for()
-    assert len(s.entries()) == 23 and s.policies()["handoff_topics"] and s.seed(DEMO_KB) == 0  # seeding is one-time
+    assert len(s.entries()) == 43 and s.policies()["handoff_topics"] and s.seed(DEMO_KB) == 0  # seeding is one-time
     before = s.version()
     with pytest.raises(StoreError, match="missing: answer_en"):
         s.upsert_entry({"id": "X", "topic": "t", "answer_ar": "نص"})
     s.upsert_entry({"id": "KB-90", **NEW_ENTRY})
     assert s.version() != before and s.deactivate("KB-90") and not s.deactivate("KB-90")
     assert "KB-90" not in {e.id for e in s.entries()}
+
+
+def test_import_updates_a_database_in_use_and_keeps_people(tmp_path: Path) -> None:
+    old = tmp_path / "old_kb"
+    old.mkdir()
+    lines = (DEMO_KB / "faq.csv").read_text(encoding="utf-8").splitlines()
+    (old / "faq.csv").write_text("\n".join(lines[:-2]) + "\n", encoding="utf-8")  # the last two entries are new
+    (old / "policies.json").write_text((DEMO_KB / "policies.json").read_text(encoding="utf-8"), encoding="utf-8")
+    s = Store("sqlite:///:memory:")
+    s.seed(old)
+    s.record("visitor-1", "chat-0001", "hi", "Hi!", "en", "", "answer", 1.0, "kb")
+    s.upsert_entry({"id": "KB-90", **NEW_ENTRY})  # an entry added through the admin API
+    assert s.import_folder(DEMO_KB) == {"added": 2, "updated": 0, "entries": 44}
+    assert s.import_folder(DEMO_KB)["added"] == 0  # running it again changes nothing
+    assert s.chat_owner("chat-0001") == "visitor-1" and any(e.id == "KB-90" for e in s.entries())
+    assert {e.id: e for e in s.entries()}["KB-25"].required == {"TEAM"}  # required concepts survive the database
 
 
 def test_the_bot_follows_the_database_without_a_restart() -> None:
@@ -50,10 +66,10 @@ def test_the_bot_follows_the_database_without_a_restart() -> None:
 def test_insights_mask_personal_data_and_show_content_gaps() -> None:
     s = store_for()
     for q in ("my card 4111 1111 1111 1111 is stuck", "My card 4111 1111 1111 1111 is stuck?", "email me at a@b.com"):
-        s.log(q, "en", "", "clarify", 0.0, "clarify")
-    s.log("How much?", "en", "pricing", "answer", 9.0, "kb")
+        s.record("visitor-01", "chat-0001", q, "Could you tell me more?", "en", "", "clarify", 0.0, "clarify")
+    s.record("visitor-02", "chat-0002", "How much?", "$10", "en", "pricing", "answer", 9.0, "kb")
     i = s.insights()
-    assert i["conversations"] == 4 and i["answered_rate"] == 0.25 and i["asked_to_clarify"] == 3
+    assert i["messages"] == 4 and i["people"] == 2 and i["chats"] == 2 and i["answered_rate"] == 0.25 and i["asked_to_clarify"] == 3
     assert i["content_gaps"][0] == {"question": "my card [card] is stuck", "times": 2}
     assert all("4111" not in g["question"] and "@" not in g["question"] for g in i["content_gaps"])
 
@@ -87,7 +103,7 @@ def test_admin_api_changes_answers_live(server) -> None:
     assert ask(url, "When will my order arrive?")["supportbot"]["topic"] != "delivery"
     ask(url, "عندي مشكلة")
     insights = httpx.get(f"{url}/admin/insights?days=1", headers=admin).json()
-    assert insights["conversations"] == 3 and insights["asked_to_clarify"] >= 1
+    assert insights["messages"] == 3 and insights["asked_to_clarify"] >= 1
     assert httpx.get(f"{url}/admin/llm", headers=admin).json() == {"providers": []}
 
 
@@ -205,12 +221,72 @@ def test_postgres_store_behaves_like_sqlite() -> None:
     pg = Store(url)
     pg._run("DROP TABLE IF EXISTS kb_entries, kb_settings, conversations")
     pg = Store(url)
-    assert pg.seed(DEMO_KB) == 23
+    assert pg.seed(DEMO_KB) == 43
     bot = SupportBot(store=pg, refresh_s=0)
     sqlite_bot = SupportBot(store=store_for())
     for q in ("الاشتراك بكام؟", "عايز فلوسي ترجع", "How do I cancel?", "عندي مشكلة"):
         assert bot.respond(q).to_dict() == sqlite_bot.respond(q).to_dict()
     pg.upsert_entry({"id": "KB-90", **NEW_ENTRY})
     assert bot.respond("الطلب هيوصل إمتى؟").topic == "delivery"
-    pg.log("card 4111 1111 1111 1111", "en", "", "clarify", 0, "clarify")
+    pg.record("visitor-01", "chat-0001", "card 4111 1111 1111 1111", "?", "en", "", "clarify", 0, "clarify")
     assert pg.insights()["content_gaps"][0]["question"] == "card [card]"
+
+
+# ----- people and chats -----
+
+def test_people_chats_and_erasure() -> None:
+    s = store_for()
+    s.record("visitor-01", "chat-0001", "الاشتراك بكام؟", "10 دولار", "ar", "pricing", "answer", 9.0, "kb")
+    s.record("visitor-01", "chat-0001", "عايز فلوسي ترجع، كارت 4111 1111 1111 1111", "سأحولك", "ar", "refund", "handoff", 5.0, "kb")
+    s.record("visitor-01", "chat-0002", "hi", "Hi!", "en", "greeting", "answer", 0.0, "kb")
+    person = s.users()[0]
+    assert (person["id"], person["chats"], person["messages"], person["language"]) == ("visitor-01", 2, 3, "en")
+    chat = next(c for c in s.chats("visitor-01") if c["id"] == "chat-0001")
+    assert chat["status"] == "handed_off" and chat["turns"] == 2 and chat["title"] == "الاشتراك بكام؟"
+    assert "[card]" in s.transcript("chat-0001")[1]["question"] and "4111" not in str(s.transcript("chat-0001"))
+    assert s.set_profile("visitor-01", name="Salma", email="salma@example.com") and s.users("Salma")[0]["email"]
+    assert s.forget_user("visitor-01") == {"turns": 3, "chats": 2, "users": 1}
+    assert not s.users() and not s.chats() and not s.transcript("chat-0001")
+
+
+def chat_post(url: str, text: str, user: str | None = None, chat: str | None = None) -> dict:
+    body: dict = {"messages": [{"role": "user", "content": text}]}
+    if user:
+        body["user"] = user
+    return httpx.post(f"{url}/v1/chat/completions", json=body, headers={"X-Chat-Id": chat} if chat else {}).json()
+
+
+def test_server_keeps_chats_per_person(server) -> None:
+    url, store = server
+    first = chat_post(url, "الاشتراك بكام؟", user="visitor-abc")
+    chat = first["supportbot"]["chat_id"]
+    chat_post(url, "والسنوي؟", user="visitor-abc", chat=chat)
+    mine = httpx.get(f"{url}/v1/chats/{chat}?user=visitor-abc").json()["turns"]
+    assert [t["question"] for t in mine] == ["الاشتراك بكام؟", "والسنوي؟"]
+    assert httpx.get(f"{url}/v1/chats/{chat}?user=visitor-xyz").status_code == 404      # not your chat
+    hijack = chat_post(url, "hello", user="visitor-xyz", chat=chat)                      # cannot write into it either
+    assert hijack["supportbot"]["chat_id"] != chat and len(store.transcript(chat)) == 2
+    admin = {"X-Admin-Key": "admin-secret"}
+    people = httpx.get(f"{url}/admin/users", headers=admin).json()["users"]
+    assert {p["id"] for p in people} == {"visitor-abc", "visitor-xyz"}
+    profile = httpx.get(f"{url}/admin/users/visitor-abc", headers=admin).json()
+    assert profile["messages"] == 2 and profile["chat_list"][0]["id"] == chat
+    assert httpx.get(f"{url}/admin/chats/{chat}", headers=admin).json()["turns"][1]["topic"] == "pricing"
+    assert httpx.patch(f"{url}/admin/users/visitor-abc", json={"name": "Salma"}, headers=admin).json()["updated"]
+    assert httpx.get(f"{url}/admin/users", headers={"X-Admin-Key": "wrong"}).status_code == 401
+    gone = httpx.delete(f"{url}/admin/users/visitor-abc", headers=admin).json()["deleted"]
+    assert gone == {"turns": 2, "chats": 1, "users": 1} and httpx.get(f"{url}/v1/chats/{chat}?user=visitor-abc").status_code == 404
+
+
+def test_calls_without_ids_are_still_recorded(server) -> None:
+    url, store = server
+    r = chat_post(url, "How do I cancel?")
+    assert r["supportbot"]["chat_id"] and store.users()[0]["id"] == "anonymous"
+
+
+def test_admin_console_page_is_served_and_escapes_text(server) -> None:
+    url, _ = server
+    page = httpx.get(f"{url}/admin")
+    assert page.status_code == 200 and "Support console" in page.text
+    assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
+    assert ".innerHTML" not in page.text  # every value from the database is inserted as text

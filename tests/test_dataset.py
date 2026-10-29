@@ -61,8 +61,8 @@ def test_coverage_and_contamination() -> None:
 
 def test_built_dataset_is_balanced_clean_and_committed() -> None:
     cases = build_cases()
-    assert len(cases) == 1769 and len({c.id for c in cases}) == len(cases)
-    assert sum(c.test_type == "multi_turn" for c in cases) == 24 and all(c.history for c in cases if c.test_type == "multi_turn")
+    assert len(cases) == 3613 and len({c.id for c in cases}) == len(cases)
+    assert sum(c.test_type == "multi_turn" for c in cases) == 36 and all(c.history for c in cases if c.test_type == "multi_turn")
     assert not near_duplicates(cases) and not coverage_gaps(cases)
     assert all(n >= 5 for row in coverage(cases).values() for n in row.values())
     assert {c.dialect for c in cases} == set(DIALECTS)
@@ -71,7 +71,7 @@ def test_built_dataset_is_balanced_clean_and_committed() -> None:
     assert len(contamination(cases, training_questions())) == 3  # planted on purpose for the demo
     assert fingerprint(load_cases(GOLDEN)) == fingerprint(cases), "data/golden.csv is stale: run python -m chatbot_eval build"
     holdout = build_holdout()
-    assert len(holdout) == 88 and not contamination(holdout, [c.question for c in cases])  # new wording, not copies
+    assert len(holdout) == 180 and not contamination(holdout, [c.question for c in cases])  # new wording, not copies
     assert fingerprint(load_cases(GOLDEN.with_name("holdout.csv"))) == fingerprint(holdout)
 
 

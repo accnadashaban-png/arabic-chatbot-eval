@@ -70,7 +70,7 @@ def test_support_bot_passes_dev_but_not_the_held_out_set() -> None:
 
 def test_small_slices_are_reported_not_judged() -> None:
     bot = SupportBot()
-    d = decide(summarize(run(CASES, bot), CASES), Gates(min_slice_size=200))
+    d = decide(summarize(run(CASES, bot), CASES), Gates(min_slice_size=600))
     assert d.go and any("english" in t for t in d.too_small) and not any(g.name == "Dialect: english" for g in d.gates)
 
 
