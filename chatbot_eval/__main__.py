@@ -27,6 +27,7 @@ from chatbot_eval.metrics import summarize
 from chatbot_eval.report import write_excel, write_markdown
 from chatbot_eval.review import agreement, export_review, import_review
 from chatbot_eval.runner import Run, run
+from chatbot_eval.templates import FIRST_RELEASE
 
 ROOT = Path(__file__).resolve().parent.parent
 GOLDEN, TRAINING, GATES = ROOT / "data" / "golden.csv", ROOT / "data" / "training_faq.csv", ROOT / "data" / "gates.json"
@@ -115,12 +116,15 @@ def cmd_report(a: argparse.Namespace) -> int:
 
 def cmd_demo(_: argparse.Namespace) -> int:
     cases = load_cases(GOLDEN)
-    runs = ROOT / "runs"
-    first = run(cases, MockBot(1), label="UAT round 1").save(runs / "demo-round1.jsonl")
-    second = run(cases, MockBot(2), label="UAT round 2").save(runs / "demo-round2.jsonl")
-    out = ROOT / "reports"
-    report(str(first), str(GOLDEN), str(GATES), None, str(out / "demo-round1.xlsx"), str(out / "demo-round1.md"))
-    report(str(second), str(GOLDEN), str(GATES), str(first), str(out / "demo-round2.xlsx"), str(out / "demo-round2.md"))
+    runs, out = ROOT / "runs", ROOT / "reports"
+    # The demo UAT bot was built for the first release, so its rounds are judged on that scope only
+    uat = [c for c in cases if c.intent in FIRST_RELEASE]
+    save_cases(uat, runs / "first-release.csv")
+    first = run(uat, MockBot(1), label="UAT round 1").save(runs / "demo-round1.jsonl")
+    second = run(uat, MockBot(2), label="UAT round 2").save(runs / "demo-round2.jsonl")
+    scope = str(runs / "first-release.csv")
+    report(str(first), scope, str(GATES), None, str(out / "demo-round1.xlsx"), str(out / "demo-round1.md"))
+    report(str(second), scope, str(GATES), str(first), str(out / "demo-round2.xlsx"), str(out / "demo-round2.md"))
     bot = make_bot("support")
     dev = run(cases, bot, label="Support bot, development set").save(runs / "support-dev.jsonl")
     held = run(load_cases(HOLDOUT), bot, label="Support bot, held-out set").save(runs / "support-holdout.jsonl")
