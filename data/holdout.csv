@@ -87,3 +87,95 @@ HO-085,تسلم إيدك,egyptian,thanks,happy_path,medium,ar,answer,,,,,,held o
 HO-086,"Cheers, that's all I needed",english,thanks,happy_path,easy,en,answer,,,,,,held out
 HO-087,ما قصرت,gulf,thanks,happy_path,medium,ar,answer,,,,,,held out
 HO-088,جزاك الله خيرًا,msa,thanks,happy_path,easy,ar,answer,,,,,,held out
+HO-089,عايز أشوف الكورس وأنا في الطيارة من غير إنترنت,egyptian,offline_download,happy_path,medium,ar,answer,التطبيق|app;30,,,,,held out
+HO-090,ينفع أخزن الدروس على الجوال؟,gulf,offline_download,happy_path,medium,ar,answer,التطبيق|app;30,,,,,held out
+HO-091,هل تتوفر خاصية المشاهدة بدون إنترنت؟,msa,offline_download,happy_path,easy,ar,answer,التطبيق|app;30,,,,,held out
+HO-092,Can lessons be saved for a flight?,english,offline_download,happy_path,easy,en,answer,التطبيق|app;30,,,,,held out
+HO-093,الشركة عايزة تشترك لـ 20 موظف,egyptian,team_plan,happy_path,medium,ar,answer,8;5,,,,,held out
+HO-094,عندكن عرض للمؤسسات؟,levantine,team_plan,happy_path,medium,ar,answer,8;5,,,,,held out
+HO-095,هل توجد اشتراكات للمؤسسات؟,msa,team_plan,happy_path,easy,ar,answer,8;5,,,,,held out
+HO-096,Is there pricing for businesses?,english,team_plan,happy_path,easy,en,answer,8;5,,,,,held out
+HO-097,عايز أعمل مفاجأة لأخويا باشتراك,egyptian,gift,happy_path,medium,ar,answer,هدية|gift,,,,,held out
+HO-098,أبي أشتري بطاقة هدية,gulf,gift,happy_path,medium,ar,answer,هدية|gift,,,,,held out
+HO-099,هل تبيعون بطاقات هدايا؟,msa,gift,happy_path,easy,ar,answer,هدية|gift,,,,,held out
+HO-100,Do you sell gift cards?,english,gift,happy_path,easy,en,answer,هدية|gift,,,,,held out
+HO-101,هسافر شهرين، ممكن أوقف الحساب لحد ما أرجع؟,egyptian,pause_subscription,happy_path,medium,ar,answer,3;مؤقت|pause,,,,,held out
+HO-102,فيني أعمل استراحة من الاشتراك؟,levantine,pause_subscription,happy_path,medium,ar,answer,3;مؤقت|pause,,,,,held out
+HO-103,هل يمكن تعليق العضوية مؤقتًا؟,msa,pause_subscription,happy_path,easy,ar,answer,3;مؤقت|pause,,,,,held out
+HO-104,Can I put my plan on hold?,english,pause_subscription,happy_path,easy,en,answer,3;مؤقت|pause,,,,,held out
+HO-105,ينفع أنا وأختي نستخدم نفس الحساب؟,egyptian,devices,happy_path,medium,ar,answer,3,,,,,held out
+HO-106,كم جوال أقدر أسجل فيه؟,gulf,devices,happy_path,medium,ar,answer,3,,,,,held out
+HO-107,ما الحد الأقصى للأجهزة؟,msa,devices,happy_path,easy,ar,answer,3,,,,,held out
+HO-108,Is there a device limit?,english,devices,happy_path,easy,en,answer,3,,,,,held out
+HO-109,كل ما أفتح الكورس يرجعني للأول,egyptian,progress,happy_path,medium,ar,answer,التقدم|تقدمك|progress,,,,,held out
+HO-110,الدروس اللي ساليت ما بانوش,maghrebi,progress,happy_path,hard,ar,answer,التقدم|تقدمك|progress,,,,,held out
+HO-111,نسبة الإنجاز لا تتحدث,msa,progress,happy_path,easy,ar,answer,التقدم|تقدمك|progress,,,,,held out
+HO-112,My completed lessons reset,english,progress,happy_path,easy,en,answer,التقدم|تقدمك|progress,,,,,held out
+HO-113,عديت الامتحان ولا لأ؟ محتاجة أعيده,egyptian,exam_retake,happy_path,medium,ar,answer,70;24,,,,,held out
+HO-114,ما نجحت بالكويز,levantine,exam_retake,happy_path,medium,ar,answer,70;24,,,,,held out
+HO-115,كم عدد محاولات الاختبار المسموحة؟,msa,exam_retake,happy_path,easy,ar,answer,70;24,,,,,held out
+HO-116,How many attempts do I get on the test?,english,exam_retake,happy_path,easy,en,answer,70;24,,,,,held out
+HO-117,اسمي مكتوب غلط في الشهادة,egyptian,certificate_verify,happy_path,medium,ar,answer,رابط|link,,,,,held out
+HO-118,أبي رابط للشهادة أرسله للشركة,gulf,certificate_verify,happy_path,medium,ar,answer,رابط|link,,,,,held out
+HO-119,هل للشهادة رقم تحقق؟,msa,certificate_verify,happy_path,easy,ar,answer,رابط|link,,,,,held out
+HO-120,Does the certificate have a credential ID?,english,certificate_verify,happy_path,easy,en,answer,رابط|link,,,,,held out
+HO-121,أنا مهندس وعايز أعلّم عندكم,egyptian,become_instructor,happy_path,medium,ar,answer,10,,,,,held out
+HO-122,تقبلون مدربين جدد؟,gulf,become_instructor,happy_path,medium,ar,answer,10,,,,,held out
+HO-123,ما شروط التدريس على المنصة؟,msa,become_instructor,happy_path,easy,ar,answer,10,,,,,held out
+HO-124,Are you hiring teachers?,english,become_instructor,happy_path,easy,en,answer,10,,,,,held out
+HO-125,محتاج حد متخصص يراجع معايا خطتي,egyptian,mentoring,happy_path,medium,ar,answer,30,,,,,held out
+HO-126,في حدا بيقدر يوجهني شخصيًا؟,levantine,mentoring,happy_path,medium,ar,answer,30,,,,,held out
+HO-127,هل يمكنني التحدث مع مرشد مهني؟,msa,mentoring,happy_path,easy,ar,answer,30,,,,,held out
+HO-128,Can I get personal coaching?,english,mentoring,happy_path,easy,en,answer,30,,,,,held out
+HO-129,ليه مفيش كورس فوتوشوب؟ ياريت تنزلوه,egyptian,course_request,happy_path,medium,ar,answer,اقتراح|Suggest,,,,,held out
+HO-130,ودي تسوون دورة إكسل متقدم,gulf,course_request,happy_path,medium,ar,answer,اقتراح|Suggest,,,,,held out
+HO-131,أتمنى إضافة دورات في الذكاء الاصطناعي,msa,course_request,happy_path,easy,ar,answer,اقتراح|Suggest,,,,,held out
+HO-132,Please add more courses about Excel,english,course_request,happy_path,easy,en,answer,اقتراح|Suggest,,,,,held out
+HO-133,عايز أبقى محلل بيانات، أمشي إزاي؟,egyptian,learning_path,happy_path,medium,ar,answer,مسار|path,,,,,held out
+HO-134,ما بعرف شو المناسب إلي,levantine,learning_path,happy_path,medium,ar,answer,مسار|path,,,,,held out
+HO-135,هل يوجد اختبار لتحديد المستوى؟,msa,learning_path,happy_path,easy,ar,answer,مسار|path,,,,,held out
+HO-136,What order should I take the courses in?,english,learning_path,happy_path,easy,en,answer,مسار|path,,,,,held out
+HO-137,فين أرفع الواجب؟,egyptian,assignments,happy_path,medium,ar,answer,5,,,,,held out
+HO-138,وين أسلّم المشروع؟,gulf,assignments,happy_path,medium,ar,answer,5,,,,,held out
+HO-139,متى أحصل على تقييم مشروعي؟,msa,assignments,happy_path,easy,ar,answer,5,,,,,held out
+HO-140,Where do I upload my homework?,english,assignments,happy_path,easy,en,answer,5,,,,,held out
+HO-141,جالي إيميل إن حد دخل حسابي من بلد تانية,egyptian,account_security,happy_path,medium,ar,answer,الأمان|Security,,,,,held out
+HO-142,بدي أمّن حسابي أكتر,levantine,account_security,happy_path,medium,ar,answer,الأمان|Security,,,,,held out
+HO-143,وصلتني رسالة عن تسجيل دخول مشبوه,msa,account_security,happy_path,easy,ar,answer,الأمان|Security,,,,,held out
+HO-144,Someone logged into my account without me,english,account_security,happy_path,easy,en,answer,الأمان|Security,,,,,held out
+HO-145,انتو شغالين يوم الجمعة؟,egyptian,support_hours,happy_path,medium,ar,answer,الأحد|Sunday,,,,,held out
+HO-146,الدعم يشتغل الويكند؟,gulf,support_hours,happy_path,medium,ar,answer,الأحد|Sunday,,,,,held out
+HO-147,متى يمكنني التواصل مع الدعم؟,msa,support_hours,happy_path,easy,ar,answer,الأحد|Sunday,,,,,held out
+HO-148,Are you open on weekends?,english,support_hours,happy_path,easy,en,answer,الأحد|Sunday,,,,,held out
+HO-149,ليه المبلغ زاد عن 10 دولار؟,egyptian,tax,happy_path,medium,ar,answer,الضريبة|ضريبة|VAT|tax,,,,,held out
+HO-150,السعر قبل الضريبة؟,levantine,tax,happy_path,medium,ar,answer,الضريبة|ضريبة|VAT|tax,,,,,held out
+HO-151,هل تُضاف ضرائب على الفاتورة؟,msa,tax,happy_path,easy,ar,answer,الضريبة|ضريبة|VAT|tax,,,,,held out
+HO-152,Is VAT included in the yearly price?,english,tax,happy_path,easy,en,answer,الضريبة|ضريبة|VAT|tax,,,,,held out
+HO-153,البنك بعتلي رسالتين خصم,egyptian,double_charge,happy_path,medium,ar,handoff,,,,,,held out
+HO-154,انسحب المبلغ مرتين,gulf,double_charge,happy_path,medium,ar,handoff,,,,,,held out
+HO-155,هناك عملية دفع مكررة,msa,double_charge,happy_path,easy,ar,handoff,,,,,,held out
+HO-156,You billed me two times,english,double_charge,happy_path,easy,en,handoff,,,,,,held out
+HO-157,الكورس ليه مدة ولا مفتوح؟,egyptian,course_expiry,happy_path,medium,ar,answer,مدى الحياة|for life,,,,,held out
+HO-158,الدورة لها تاريخ انتهاء؟,gulf,course_expiry,happy_path,medium,ar,answer,مدى الحياة|for life,,,,,held out
+HO-159,هل الوصول إلى الدورات دائم؟,msa,course_expiry,happy_path,easy,ar,answer,مدى الحياة|for life,,,,,held out
+HO-160,Does my course access expire?,english,course_expiry,happy_path,easy,en,answer,مدى الحياة|for life,,,,,held out
+HO-161,فيه عمولة لو جبتلكم مشتركين؟,egyptian,referral,happy_path,medium,ar,answer,شهر|month,,,,,held out
+HO-162,بتعطوا شي إذا جبت ناس؟,levantine,referral,happy_path,medium,ar,answer,شهر|month,,,,,held out
+HO-163,هل لديكم برنامج إحالة؟,msa,referral,happy_path,easy,ar,answer,شهر|month,,,,,held out
+HO-164,Is there a referral program?,english,referral,happy_path,easy,en,answer,شهر|month,,,,,held out
+HO-165,أنا طالب ومعيش فلوس للاشتراك,egyptian,scholarship,happy_path,medium,ar,answer,75,,,,,held out
+HO-166,عندكم دعم للعاطلين عن العمل؟,gulf,scholarship,happy_path,medium,ar,answer,75,,,,,held out
+HO-167,هل يوجد دعم للطلاب غير القادرين؟,msa,scholarship,happy_path,easy,ar,answer,75,,,,,held out
+HO-168,Is there help for people who can't pay?,english,scholarship,happy_path,easy,en,answer,75,,,,,held out
+HO-169,أول أسبوع ببلاش؟,egyptian,trial,happy_path,medium,ar,answer,7,,,,,held out
+HO-170,فيني جرب ببلاش؟,levantine,trial,happy_path,medium,ar,answer,7,,,,,held out
+HO-171,هل الأسبوع الأول مجاني؟,msa,trial,happy_path,easy,ar,answer,7,,,,,held out
+HO-172,Do you have a trial period?,english,trial,happy_path,easy,en,answer,7,,,,,held out
+HO-173,فيه عروض دلوقتي؟,egyptian,discounts,happy_path,medium,ar,answer,كود|code,,,,,held out
+HO-174,فيه تخفيضات؟,gulf,discounts,happy_path,medium,ar,answer,كود|code,,,,,held out
+HO-175,هل توجد عروض ترويجية؟,msa,discounts,happy_path,easy,ar,answer,كود|code,,,,,held out
+HO-176,Any coupons available?,english,discounts,happy_path,easy,en,answer,كود|code,,,,,held out
+HO-177,الشرح عربي؟,egyptian,course_language,happy_path,medium,ar,answer,ترجمة|subtitles,,,,,held out
+HO-178,الكورسات بأي لغة؟,levantine,course_language,happy_path,medium,ar,answer,ترجمة|subtitles,,,,,held out
+HO-179,هل الشرح باللغة العربية؟,msa,course_language,happy_path,easy,ar,answer,ترجمة|subtitles,,,,,held out
+HO-180,Are courses taught in English?,english,course_language,happy_path,easy,en,answer,ترجمة|subtitles,,,,,held out
