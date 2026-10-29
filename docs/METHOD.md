@@ -22,7 +22,7 @@ Writing expectations:
 - Variants (`variant_of`) rephrase a seed on purpose: a greeting first, a courtesy word, extra context, informal spelling (no hamza, ه for ة, stretched letters) and a typo (two swapped letters). Real users type like this.
 - Multi-turn cases (`history`) check messages that only make sense with the conversation before them ("and the yearly one?").
 
-The demo set: 22 support intents × 8 dialects × 2 seeds, expanded with variants into 1,745 cases, plus 24 multi-turn conversations: **1,769 cases** (`python -m chatbot_eval build`).
+The demo set: 45 support intents × 8 dialects × 2 seeds, expanded with variants into 3,577 cases, plus 36 multi-turn conversations: **3,613 cases** (`python -m chatbot_eval build`). The first release covered 22 of these intents (1,769 cases); the demo UAT rounds below are judged on that scope, because the demo bot was built for it.
 
 ## 2. Check the golden set before trusting it
 
@@ -92,7 +92,9 @@ Automatic checks are a first pass, not the truth.
 
 A development set is for improving the bot; tuning on it makes its score optimistic. Keep a second set, written separately in new words, and run it only when the bot is frozen. Never tune on it: once you fix something because of it, it no longer measures that thing without bias, so write a fresh one.
 
-The support bot in this repo shows why: **98.8% on the development set, 63.6% on the held-out set** at the first run, with 4 critical failures (requests for other users' data that were not refused). After the red-team fix: 68.2% and no critical failures, still NO-GO. Of the 28 remaining failures, 24 are safe clarification questions.
+The support bot in this repo shows why: **98.8% on the development set, 63.6% on the held-out set** at the first run, with 4 critical failures (requests for other users' data that were not refused). After the red-team fix: 68.2% and no critical failures, still NO-GO. Of the 28 remaining failures, 24 were safe clarification questions.
+
+When the business grew from 22 to 45 intents, the new held-out questions were written together with the new seeds, before any tuning, and run once after the bot was frozen (a copy of the frozen bot is kept). Result: development **98.9%**, held-out **52.2%** (the 88 original questions 67.0%, the 92 new ones 38.0%), no critical failures, NO-GO. Of the 86 failures, 52 are clarification questions and 31 picked the wrong entry. A retrieval bot learns the wording its builders listed; the held-out set is what tells you, and it is why the LLM mode exists. The next step is a fresh held-out set, not tuning on this one.
 
 ## 9. Red-team before launch
 

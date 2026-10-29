@@ -20,13 +20,19 @@ SB_DATABASE_URL=postgresql://bot:pass@db:5432/support python -m supportbot serve
 
 Start from a folder (see [`supportbot/demo_kb`](../supportbot/demo_kb)); after the first start it lives in the database and is managed through the admin API.
 
+To update a database that is already in use from your edited files (people and chats are kept, entries you added through the API stay):
+
+```bash
+python -m supportbot import --kb my_kb            # or --db postgresql://...
+```
+
 **`faq.csv`**
 
 | Column | Example | Notes |
 |---|---|---|
 | `id` | `KB-02` | Shown as the source of each answer. |
 | `topic` | `pricing` | Used by the policies below. |
-| `concepts` | `PRICE MONTHLY YEARLY` | From the lexicon: what this entry is about. Name the topic concept first; descriptors (`COURSE`, `ACCOUNT`, `SCHEDULE`...) only narrow it. |
+| `concepts` | `PRICE MONTHLY YEARLY` | From the lexicon: what this entry is about. Descriptors (`COURSE`, `ACCOUNT`, `SCHEDULE`, `DOWNLOAD`...) only narrow it. Prefix a concept with `!` to require it: `!TEAM PRICE PLAN` only competes when the message is about a team, so "how much is the yearly plan?" stays with pricing. Use it for entries that share words with a broader one (pause vs cancel, double charge vs refund, verifying a certificate vs getting one). |
 | `questions` | `ما أسعار الباقات؟\|What are your prices?` | A few natural phrasings, separated by `\|`. |
 | `answer_ar`, `answer_en` | | The exact text users see. Keep facts (prices, days, links) here: the LLM may only repeat them. |
 
@@ -55,7 +61,13 @@ Start from a folder (see [`supportbot/demo_kb`](../supportbot/demo_kb)); after t
 |---|---|
 | `kb_entries` | The knowledge base. Entries are switched off (`active = 0`), never deleted, so past conversations stay readable. |
 | `kb_settings` | The policies. |
-| `conversations` | Time, language, topic, behavior, confidence and mode of every message, with the question's emails, card numbers and phone numbers masked. No IP addresses. |
+| `users` | One row per person: an anonymous visitor id from the widget or your own user id, optional name and email, first and last seen, number of chats and messages. |
+| `chats` | One row per conversation: who, when, a title (the first question), `open` or `handed_off`, number of turns, last topic. |
+| `turns` | Every exchange: question (emails, card numbers and phone numbers masked), answer, language, topic, behavior, confidence and mode. No IP addresses. |
+
+The README shows the [diagram and sample rows](../README.md#the-database).
+
+**People and chats.** Send the person's id as the OpenAI `user` field and the chat id in the `X-Chat-Id` header; the reply returns the chat id (`supportbot.chat_id`). A missing, malformed or someone else's chat id starts a new chat, so nobody can read or append to another person's conversation. `GET /v1/chats/<chat id>?user=<user id>` returns a person's own chat; the widget uses it to show a returning visitor their conversation.
 
 Before answering, the bot checks (at most every two seconds) whether entries or settings changed and rebuilds its index if so. Any writer works: the admin API, a script, or another system writing to the same tables.
 
@@ -70,9 +82,14 @@ Set `SB_ADMIN_KEY`; every call sends it as `X-Admin-Key`. Without a key the admi
 | `DELETE /admin/entries/<id>` | Switch an entry off. |
 | `GET /admin/insights?days=7` | Conversations, answered rate, hand-offs, by topic, behavior and mode, and **content gaps**: the questions the bot most often could not answer. |
 | `GET /admin/llm` | Each LLM provider: available or resting, for how long, last error, answers served. |
+| `GET /admin/users?search=` | People, most recent first; search by id, name or email. |
+| `GET /admin/users/<id>` | A person with their chats. `PATCH` sets `name` and `email`; `DELETE` erases the person and everything they said (for data-deletion requests). |
+| `GET /admin/chats` · `GET /admin/chats/<id>` | Recent conversations, and one full transcript. |
+
+**Admin console:** open `/admin` in a browser and paste the admin key (kept for that browser tab only). Overview, conversations, people, knowledge base (edit or switch off answers live) and AI models. Every value from the database is inserted as text, never as HTML.
 
 ```bash
-curl -X PUT http://127.0.0.1:8070/admin/entries/KB-30 -H "X-Admin-Key: $SB_ADMIN_KEY" -H "Content-Type: application/json" \
+curl -X PUT http://127.0.0.1:8070/admin/entries/KB-90 -H "X-Admin-Key: $SB_ADMIN_KEY" -H "Content-Type: application/json" \
   -d '{"topic":"delivery","concepts":"SCHEDULE","questions":["When will my order arrive?"],"answer_ar":"يصل الطلب خلال 3 أيام عمل.","answer_en":"Orders arrive within 3 working days."}'
 ```
 
