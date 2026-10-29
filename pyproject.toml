@@ -1,6 +1,6 @@
 [project]
 name = "arabic-chatbot-eval"
-version = "2.1.0"
+version = "2.2.0"
 description = "Evaluate an Arabic + English chatbot before launch, plus a red-teamed customer-support bot any business can run on its own FAQ."
 readme = "README.md"
 license = { text = "MIT" }

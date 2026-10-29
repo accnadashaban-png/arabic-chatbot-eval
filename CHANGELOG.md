@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.2.0
+
+- **A bigger business:** the demo (Lernova) grew from 23 to 43 knowledge-base entries: team plans, gift memberships,
+  pausing, devices, progress, final quiz and retakes, certificate verification, teaching, mentoring, course requests,
+  learning paths, projects, account security, support hours, tax, double charges (handed to billing), course access
+  after purchase, invite-a-friend and financial aid.
+- **Golden set 3,613 cases** (45 intents, 36 multi-turn conversations) and **held-out set 180** (92 new questions written
+  before tuning). Development 98.9% GO; held-out 52.2% NO-GO, reported as measured (original 88: 67.0%, new 92: 38.0%).
+  The demo UAT rounds are judged on the first release's scope (1,769 cases), the support bot on everything.
+- **Required concepts** in the knowledge base (`!TEAM PRICE PLAN`): a specific entry only competes when the message
+  names its key concept, so "pause" no longer captures "cancel" and "double charge" no longer captures "refund".
+- **People and conversations:** `users`, `chats` and `turns` tables; anonymous visitor id and chat id in the widget;
+  returning visitors see their chat; "new conversation" button; another person's chat can never be read or extended;
+  erase a person with one call.
+- **Admin console** at `/admin`: overview with messages per day, conversations with transcripts, people, live
+  knowledge-base editing and AI model status.
+- Shared lexicon: `DOWNLOAD` descriptor, plural video words, "discounts", "شهادتي"; freeze words count as "not working".
+- `python -m supportbot import --kb my_kb`: add or update a knowledge base in a database already in use; people and chats are kept.
+- 145 tests.
+
 ## 2.1.0
 
 - **Live database** (`supportbot/store.py`): knowledge base, settings and a masked conversation log in SQLite or

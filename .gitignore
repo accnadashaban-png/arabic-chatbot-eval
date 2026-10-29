@@ -34,6 +34,7 @@ desktop.ini
 !data/holdout.csv
 !supportbot/lexicon.csv
 !supportbot/demo_kb/faq.csv
+!supportbot/demo_kb/lexicon.csv
 
 # Run outputs (the demo regenerates them)
 runs/
