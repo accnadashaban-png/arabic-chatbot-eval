@@ -1,10 +1,11 @@
 {
-  "business": "a fictional online learning platform",
+  "business": "Lernova, a fictional online learning platform (courses, live classes, certificates, mentors, team plans)",
   "handoff_topics": [
     "refund",
     "data_deletion",
     "complaint",
-    "human_agent"
+    "human_agent",
+    "double_charge"
   ],
   "refuse_topics": [
     "out_of_scope"
