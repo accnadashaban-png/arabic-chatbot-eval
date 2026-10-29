@@ -17,11 +17,11 @@
   const T = {
     en: { hello: "Hi! I'm the virtual assistant. How can I help you today?", placeholder: "Write a message…", online: "Online · replies in seconds",
           note: "Automated assistant · our team can take over anytime", open: "Open chat", close: "Close chat", send: "Send",
-          handoff: "Passed to our support team", error: "Something went wrong. Please try again.",
+          handoff: "Passed to our support team", newchat: "New conversation", error: "Something went wrong. Please try again.",
           chips: ["How much is the subscription?", "How do I cancel?", "I forgot my password", "Talk to a person"] },
     ar: { hello: "أهلًا! أنا المساعد الآلي. إزاي أقدر أساعدك النهارده؟", placeholder: "اكتب رسالتك…", online: "متصل · بيرد في ثواني",
           note: "مساعد آلي · فريق الدعم يقدر يكمل معاك في أي وقت", open: "افتح المحادثة", close: "اقفل المحادثة", send: "إرسال",
-          handoff: "اتحوّلت لفريق الدعم", error: "حصلت مشكلة، جرّب تاني.",
+          handoff: "اتحوّلت لفريق الدعم", newchat: "محادثة جديدة", error: "حصلت مشكلة، جرّب تاني.",
           chips: ["الاشتراك بكام؟", "إزاي ألغي الاشتراك؟", "نسيت الباسورد", "عايز أكلم حد"] },
   };
 
@@ -51,9 +51,11 @@
     .title { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
     .status { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.18); }
-    .x { margin-inline-start: auto; width: 32px; height: 32px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    .new { margin-inline-start: auto; }
+    .x, .new { width: 32px; height: 32px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer;
          display: grid; place-items: center; }
-    .x:hover { background: var(--raise); color: var(--fg); }
+    .x:hover, .new:hover { background: var(--raise); color: var(--fg); }
+    .x { margin-inline-start: 0; }
     .log { flex: 1; overflow-y: auto; padding: 18px 14px 8px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin;
            scrollbar-color: var(--line) transparent; }
     .msg { max-width: 82%; padding: 10px 13px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -87,6 +89,7 @@
     }`;
 
   const ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.3 8.9 8.9 0 0 1-4-.9L3 20l1.2-4.2A8.2 8.2 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5Z"/></svg>';
+  const ICON_NEW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
   const ICON_SPARK = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M11 3.5c.6 4.7 2.8 6.9 7.5 7.5-4.7.6-6.9 2.8-7.5 7.5-.6-4.7-2.8-6.9-7.5-7.5 4.7-.6 6.9-2.8 7.5-7.5Z"/><path opacity=".7" d="M18.5 2c.2 1.5.9 2.2 2.4 2.4-1.5.2-2.2.9-2.4 2.4-.2-1.5-.9-2.2-2.4-2.4 1.5-.2 2.2-.9 2.4-2.4Z"/></svg>';
@@ -99,7 +102,7 @@
       <section class="panel" role="dialog" aria-modal="false" hidden>
         <header><div class="avatar">${ICON_SPARK}</div>
           <div><div class="title"></div><div class="status"><i></i><span class="online"></span></div></div>
-          <button class="x" type="button">${ICON_X}</button></header>
+          <button class="new" type="button">${ICON_NEW}</button><button class="x" type="button">${ICON_X}</button></header>
         <div class="log" aria-live="polite"></div>
         <div class="chips"></div>
         <form><textarea rows="1" maxlength="1000"></textarea><button class="send" type="submit">${ICON_SEND}</button></form>
@@ -110,8 +113,18 @@
 
   const $ = (s) => root.querySelector(s);
   const panel = $(".panel"), log = $(".log"), chips = $(".chips"), input = $("textarea"), send = $(".send"), launcher = $(".launcher");
-  const messages = [];
+  let messages = [];
   let lang = pageLang(), started = false, busy = false;
+
+  // A random visitor id (not personal data) and the current chat id, kept in this browser so a returning visitor
+  // sees their conversation. Storage can be blocked; the widget then works without memory.
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                  set(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
+  const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, "");
+  const KEY = `support-widget:${api || location.host}`;
+  const visitor = store.get(`${KEY}:visitor`) || newId();
+  store.set(`${KEY}:visitor`, visitor);
+  let chatId = store.get(`${KEY}:chat`) || "";
 
   function texts() {
     const t = T[lang];
@@ -122,6 +135,7 @@
     input.placeholder = t.placeholder;
     send.setAttribute("aria-label", t.send);
     $(".x").setAttribute("aria-label", t.close);
+    $(".new").setAttribute("aria-label", t.newchat); $(".new").title = t.newchat;
     launcher.setAttribute("aria-label", panel.hidden ? t.open : t.close);
     panel.setAttribute("aria-label", name);
     chips.replaceChildren(...(started ? [] : t.chips.map((c) => {
@@ -148,9 +162,31 @@
     panel.hidden = !open;
     launcher.innerHTML = open ? ICON_X : ICON_CHAT;
     launcher.setAttribute("aria-expanded", String(open));
-    if (open && !log.childElementCount) bubble(T[lang].hello, "bot");
+    if (open && !log.childElementCount) restore();
     texts();
     if (open) setTimeout(() => input.focus(), 50);
+  }
+
+  async function restore() {
+    bubble(T[lang].hello, "bot");
+    if (!chatId) return;
+    try {
+      const r = await fetch(`${api}/v1/chats/${encodeURIComponent(chatId)}?user=${encodeURIComponent(visitor)}`);
+      if (!r.ok) { chatId = ""; store.set(`${KEY}:chat`, null); return; }
+      const data = await r.json();
+      for (const t of data.turns) {
+        bubble(t.question, "me"); bubble(t.answer, "bot");
+        if (t.behavior === "handoff") note(T[lang].handoff);
+        messages.push({ role: "user", content: t.question }, { role: "assistant", content: t.answer });
+      }
+      if (data.turns.length) { started = true; texts(); }
+    } catch (e) { /* offline: start fresh */ }
+  }
+
+  function newChat() {
+    if (busy) return;
+    chatId = ""; store.set(`${KEY}:chat`, null); messages = []; started = false;
+    log.replaceChildren(); bubble(T[lang].hello, "bot"); texts(); input.focus();
   }
 
   async function ask(text) {
@@ -162,8 +198,10 @@
     typing.className = "typing"; typing.innerHTML = "<span></span><span></span><span></span>";
     log.appendChild(typing); log.scrollTop = log.scrollHeight;
     try {
-      const r = await fetch(`${api}/v1/chat/completions`, { method: "POST", headers: { "Content-Type": "application/json" },
-                                                            body: JSON.stringify({ messages: messages.slice(-20) }) });
+      const headers = { "Content-Type": "application/json" };
+      if (chatId) headers["X-Chat-Id"] = chatId;
+      const r = await fetch(`${api}/v1/chat/completions`, { method: "POST", headers,
+                                                            body: JSON.stringify({ messages: messages.slice(-20), user: visitor }) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "error");
       const reply = data.choices[0].message.content;
@@ -171,6 +209,7 @@
       typing.remove();
       bubble(reply, "bot");
       if (data.supportbot && data.supportbot.behavior === "handoff") note(T[lang].handoff);
+      if (data.supportbot && data.supportbot.chat_id) { chatId = data.supportbot.chat_id; store.set(`${KEY}:chat`, chatId); }
     } catch (e) {
       typing.remove();
       bubble(T[lang].error, "bot");
@@ -180,6 +219,7 @@
   }
 
   launcher.onclick = () => toggle(panel.hidden);
+  $(".new").onclick = newChat;
   $(".x").onclick = () => toggle(false);
   root.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) toggle(false); });
   $("form").onsubmit = (e) => { e.preventDefault(); const v = input.value; input.value = ""; input.style.height = ""; ask(v); };

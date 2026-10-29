@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Support console</title>
+<style>
+  :root { --bg:#0B0E15; --side:#0F131C; --panel:#141924; --raise:#1B2130; --line:#252C3C; --fg:#E8EBF2; --muted:#8C94A8; --faint:#5F677C;
+          --accent:#7C6CFF; --accent2:#5B4BEB; --ok:#34D399; --warn:#F5B454; --bad:#F87171;
+          --font:"Inter","IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
+  * { box-sizing:border-box; } [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 var(--font); min-height:100vh; }
+  button, input, textarea { font:inherit; color:inherit; }
+  .login { max-width:380px; margin:14vh auto; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:28px; }
+  .login h1 { margin:0 0 6px; font-size:20px; } .login p { color:var(--muted); margin:0 0 18px; }
+  input, textarea { width:100%; background:var(--raise); border:1px solid var(--line); border-radius:10px; padding:9px 12px; outline:0; }
+  input:focus, textarea:focus { border-color:#4A42A8; }
+  .btn { border:0; border-radius:10px; padding:9px 16px; cursor:pointer; background:linear-gradient(145deg,var(--accent),var(--accent2)); color:#fff; font-weight:600; }
+  .btn.ghost { background:var(--raise); border:1px solid var(--line); color:var(--fg); font-weight:500; }
+  .btn.danger { background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.35); color:var(--bad); }
+  .app { display:flex; min-height:100vh; }
+  nav { width:220px; flex:none; background:var(--side); border-inline-end:1px solid var(--line); padding:18px 12px; display:flex; flex-direction:column; gap:2px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:650; margin:0 8px 18px; }
+  .brand i { width:30px; height:30px; border-radius:10px; background:linear-gradient(145deg,var(--accent),var(--accent2)); }
+  nav button { text-align:start; border:0; background:none; padding:9px 12px; border-radius:10px; cursor:pointer; color:var(--muted); }
+  nav button.on { background:var(--raise); color:var(--fg); font-weight:600; }
+  nav .out { margin-top:auto; }
+  main { flex:1; min-width:0; padding:26px 30px; }
+  h2 { font-size:20px; margin:0 0 4px; letter-spacing:-.01em; } .sub { color:var(--muted); margin:0 0 20px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
+  .kpi span { color:var(--muted); font-size:12.5px; } .kpi b { display:block; font-size:26px; font-weight:650; margin-top:2px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:900px) { .grid { grid-template-columns:1fr; } nav { width:170px; } }
+  h3 { font-size:14px; margin:0 0 12px; }
+  table { width:100%; border-collapse:collapse; } th, td { text-align:start; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-size:12px; font-weight:600; } tr.click { cursor:pointer; } tr.click:hover { background:var(--raise); }
+  .tag { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; background:rgba(124,108,255,.12); color:#C9C2FF; }
+  .tag.handoff, .tag.handed_off { background:rgba(245,180,84,.12); color:var(--warn); } .tag.refuse { background:rgba(248,113,113,.12); color:var(--bad); }
+  .tag.clarify { background:rgba(140,148,168,.15); color:var(--muted); } .tag.answer { background:rgba(52,211,153,.12); color:var(--ok); }
+  .bars { display:flex; align-items:flex-end; gap:6px; height:120px; } .bars div { flex:1; background:linear-gradient(180deg,var(--accent),var(--accent2)); border-radius:6px 6px 2px 2px; min-height:2px; }
+  .muted { color:var(--muted); } .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .msg { max-width:80%; padding:9px 13px; border-radius:14px; margin:8px 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .q { background:linear-gradient(145deg,var(--accent),var(--accent2)); color:#fff; margin-inline-start:auto; } .a { background:var(--raise); border:1px solid var(--line); }
+  .meta { font-size:12px; color:var(--faint); margin:-4px 0 8px; } .meta.end { text-align:end; }
+  .split { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:14px; } @media (max-width:1000px) { .split { grid-template-columns:1fr; } }
+  label { display:block; color:var(--muted); font-size:12.5px; margin:10px 0 4px; } textarea { min-height:70px; resize:vertical; }
+  .err { color:var(--bad); }
+</style>
+</head>
+<body>
+<section class="login" id="login">
+  <h1>Support console</h1>
+  <p>Enter the admin key (SB_ADMIN_KEY). It is kept only in this browser tab.</p>
+  <form id="login-form"><input id="key" type="password" autocomplete="off" placeholder="Admin key"><p class="err" id="login-err"></p><button class="btn">Open</button></form>
+</section>
+<div class="app" id="app" hidden>
+  <nav>
+    <div class="brand"><i></i>Support console</div>
+    <button data-v="overview" class="on">Overview</button><button data-v="chats">Conversations</button>
+    <button data-v="people">People</button><button data-v="kb">Knowledge base</button><button data-v="llm">AI models</button>
+    <button class="out" id="logout">Sign out</button>
+  </nav>
+  <main>
+    <section data-view="overview">
+      <h2>Overview</h2><p class="sub">Last 7 days. Questions are stored with personal data masked.</p>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid"><div class="card"><h3>Messages per day</h3><div class="bars" id="bars"></div><p class="muted" id="bars-note"></p></div>
+        <div class="card"><h3>Topics</h3><table><tbody id="topics"></tbody></table></div></div>
+      <div class="card" style="margin-top:14px"><h3>Content gaps: questions the bot could not answer</h3><table><thead><tr><th>Question</th><th>Times</th></tr></thead><tbody id="gaps"></tbody></table></div>
+    </section>
+    <section data-view="chats" hidden>
+      <h2>Conversations</h2><p class="sub">Newest first. Open one to read it.</p>
+      <div class="split"><div class="card"><table><thead><tr><th>Started with</th><th>Status</th><th>Messages</th></tr></thead><tbody id="chat-list"></tbody></table></div>
+        <div class="card" id="transcript"><p class="muted">Select a conversation.</p></div></div>
+    </section>
+    <section data-view="people" hidden>
+      <h2>People</h2><p class="sub">Each visitor is an anonymous id unless your app sends its own user id.</p>
+      <div class="row"><input id="search" placeholder="Search id, name or email" style="max-width:320px"></div>
+      <div class="split"><div class="card"><table><thead><tr><th>Person</th><th>Chats</th><th>Last seen</th></tr></thead><tbody id="people"></tbody></table></div>
+        <div class="card" id="person"><p class="muted">Select a person.</p></div></div>
+    </section>
+    <section data-view="kb" hidden>
+      <h2>Knowledge base</h2><p class="sub">Changes are live for the bot within seconds.</p>
+      <div class="split"><div class="card"><div class="row"><button class="btn ghost" id="new-entry">+ New entry</button></div><table><thead><tr><th>Id</th><th>Topic</th></tr></thead><tbody id="entries"></tbody></table></div>
+        <div class="card"><form id="entry-form"><label>Id</label><input id="e-id" pattern="[A-Za-z0-9_-]{1,40}" required>
+          <label>Topic</label><input id="e-topic" required><label>Concepts (space separated)</label><input id="e-concepts">
+          <label>Example questions (one per line)</label><textarea id="e-questions"></textarea>
+          <label>Answer in Arabic</label><textarea id="e-ar" dir="rtl" required></textarea><label>Answer in English</label><textarea id="e-en" required></textarea>
+          <div class="row" style="margin-top:12px"><button class="btn">Save</button><button class="btn danger" type="button" id="e-off">Switch off</button><span id="e-msg" class="muted"></span></div></form></div></div>
+    </section>
+    <section data-view="llm" hidden>
+      <h2>AI models</h2><p class="sub">The provider group: when one runs out of credit or fails, the next one answers.</p>
+      <div class="card"><table><thead><tr><th>Provider</th><th>Model</th><th>Status</th><th>Last error</th><th>Answers</th></tr></thead><tbody id="llm"></tbody></table></div>
+    </section>
+  </main>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+  const when = (iso) => iso ? new Date(iso).toLocaleString([], {dateStyle: "medium", timeStyle: "short"}) : "";
+  let key = sessionStorage.getItem("sb-admin") || "";
+  async function api(path, opts = {}) {
+    const r = await fetch(path, {...opts, headers: {"X-Admin-Key": key, "Content-Type": "application/json", ...(opts.headers || {})}});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    return data;
+  }
+  function row(cells, onclick) {
+    const tr = el("tr"); if (onclick) { tr.className = "click"; tr.onclick = onclick; }
+    cells.forEach((c) => { const td = el("td"); typeof c === "string" || typeof c === "number" ? td.textContent = c : td.appendChild(c); tr.appendChild(td); });
+    return tr;
+  }
+  const tag = (t) => el("span", t.replace("_", " "), `tag ${t}`);
+
+  async function overview() {
+    const i = await api("/admin/insights?days=7");
+    const kp = [["Messages", i.messages], ["People", i.people], ["Conversations", i.chats], ["Answered", i.answered_rate == null ? "–" : `${Math.round(i.answered_rate * 100)}%`],
+                ["Handed to the team", i.handed_off], ["Asked to clarify", i.asked_to_clarify]];
+    $("kpis").replaceChildren(...kp.map(([k, v]) => { const d = el("div", undefined, "card kpi"); d.append(el("span", k), el("b", String(v ?? 0))); return d; }));
+    const days = Object.entries(i.per_day || {}), max = Math.max(1, ...days.map(([, n]) => n));
+    $("bars").replaceChildren(...days.map(([d, n]) => { const b = el("div"); b.style.height = `${(n / max) * 100}%`; b.title = `${d}: ${n}`; return b; }));
+    $("bars-note").textContent = days.length ? `${days[0][0]} to ${days[days.length - 1][0]}` : "No messages yet.";
+    $("topics").replaceChildren(...Object.entries(i.by_topic || {}).map(([t, n]) => row([t || "(none)", n])));
+    $("gaps").replaceChildren(...(i.content_gaps.length ? i.content_gaps.map((g) => row([g.question, g.times])) : [row(["Nothing yet", ""])]));
+  }
+  function renderTranscript(box, chat) {
+    box.replaceChildren(el("h3", `Conversation ${chat.id.slice(0, 10)}…`), el("p", `Person: ${chat.user_id}`, "muted"));
+    chat.turns.forEach((t) => {
+      const q = el("div", t.question, "msg q"), a = el("div", t.answer, "msg a"); q.dir = a.dir = "auto";
+      box.append(q, el("div", when(t.at), "meta end"), a);
+      const m = el("div", undefined, "meta"); m.append(tag(t.behavior), document.createTextNode(` ${t.topic || ""} · ${t.mode} · confidence ${t.confidence}`)); box.append(m);
+    });
+  }
+  async function chats() {
+    const {chats} = await api("/admin/chats");
+    $("chat-list").replaceChildren(...chats.map((c) => row([c.title || "(empty)", tag(c.status), c.turns],
+      async () => renderTranscript($("transcript"), await api(`/admin/chats/${encodeURIComponent(c.id)}`)))));
+  }
+  async function people() {
+    const {users} = await api(`/admin/users?search=${encodeURIComponent($("search").value.trim())}`);
+    $("people").replaceChildren(...users.map((u) => row([u.name || u.id, u.chats, when(u.last_seen)], () => person(u.id))));
+  }
+  async function person(id) {
+    const p = await api(`/admin/users/${encodeURIComponent(id)}`), box = $("person");
+    box.replaceChildren(el("h3", p.name || p.id), el("p", `${p.email || "No email"} · language ${p.language} · first seen ${when(p.first_seen)} · ${p.messages} messages`, "muted"));
+    const t = el("table"); t.append(el("tbody"));
+    p.chat_list.forEach((c) => t.tBodies[0].append(row([c.title, tag(c.status), c.turns], async () => {
+      $("tabs-chats")?.click(); renderTranscript(box, await api(`/admin/chats/${encodeURIComponent(c.id)}`)); })));
+    const del = el("button", "Delete this person and all their messages", "btn danger");
+    del.onclick = async () => { if (!confirm("Delete this person and everything they said? This cannot be undone.")) return;
+      await api(`/admin/users/${encodeURIComponent(id)}`, {method: "DELETE"}); box.replaceChildren(el("p", "Deleted.", "muted")); people(); };
+    box.append(t, el("br"), del);
+  }
+  let entries = [];
+  function fill(e) {
+    $("e-id").value = e?.id || ""; $("e-topic").value = e?.topic || ""; $("e-concepts").value = (e?.concepts || []).join(" ");
+    $("e-questions").value = (e?.questions || []).join("\n"); $("e-ar").value = e?.answer_ar || ""; $("e-en").value = e?.answer_en || ""; $("e-msg").textContent = "";
+  }
+  async function kb() {
+    entries = (await api("/admin/entries")).entries;
+    $("entries").replaceChildren(...entries.map((e) => row([e.id, e.topic], () => fill(e))));
+  }
+  async function llm() {
+    const {providers} = await api("/admin/llm");
+    $("llm").replaceChildren(...(providers.length ? providers.map((p) => row([p.name, p.model, p.available ? "available" : `resting ${p.rests_for_s}s`, p.last_error || "–", p.served]))
+      : [row(["No providers configured: answers come from the knowledge base.", "", "", "", ""])]));
+  }
+  const views = {overview, chats, people, kb, llm};
+  function show(v) {
+    document.querySelectorAll("nav button[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+    document.querySelectorAll("main section").forEach((s) => s.hidden = s.dataset.view !== v);
+    views[v]().catch((e) => alert(e.message));
+  }
+  document.querySelectorAll("nav button[data-v]").forEach((b) => { if (b.dataset.v === "chats") b.id = "tabs-chats"; b.onclick = () => show(b.dataset.v); });
+  $("search").oninput = () => people().catch(() => {});
+  $("new-entry").onclick = () => fill(null);
+  $("entry-form").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const body = {topic: $("e-topic").value, concepts: $("e-concepts").value, questions: $("e-questions").value.split("\n").filter((q) => q.trim()),
+                  answer_ar: $("e-ar").value, answer_en: $("e-en").value};
+    try { await api(`/admin/entries/${encodeURIComponent($("e-id").value.trim())}`, {method: "PUT", body: JSON.stringify(body)}); $("e-msg").textContent = "Saved. Live now."; kb(); }
+    catch (e) { $("e-msg").textContent = e.message; }
+  };
+  $("e-off").onclick = async () => {
+    const id = $("e-id").value.trim(); if (!id || !confirm(`Switch off ${id}?`)) return;
+    try { await api(`/admin/entries/${encodeURIComponent(id)}`, {method: "DELETE"}); fill(null); kb(); } catch (e) { $("e-msg").textContent = e.message; }
+  };
+  async function enter() {
+    try { await api("/admin/insights?days=1"); } catch (e) { $("login-err").textContent = e.message; $("login").hidden = false; $("app").hidden = true; return; }
+    sessionStorage.setItem("sb-admin", key); $("login").hidden = true; $("app").hidden = false; show("overview");
+  }
+  $("login-form").onsubmit = (e) => { e.preventDefault(); key = $("key").value; enter(); };
+  $("logout").onclick = () => { sessionStorage.removeItem("sb-admin"); key = ""; location.reload(); };
+  if (key) enter();
+</script>
+</body>
+</html>
