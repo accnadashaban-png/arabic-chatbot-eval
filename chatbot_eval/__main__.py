@@ -117,6 +117,7 @@ def cmd_report(a: argparse.Namespace) -> int:
 def cmd_demo(_: argparse.Namespace) -> int:
     cases = load_cases(GOLDEN)
     runs, out = ROOT / "runs", ROOT / "reports"
+    runs.mkdir(parents=True, exist_ok=True)  # not in the repository: a fresh checkout has no runs/ folder
     # The demo UAT bot was built for the first release, so its rounds are judged on that scope only
     uat = [c for c in cases if c.intent in FIRST_RELEASE]
     save_cases(uat, runs / "first-release.csv")
